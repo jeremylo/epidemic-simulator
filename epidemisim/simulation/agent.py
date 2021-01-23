@@ -4,6 +4,7 @@ import itertools
 MAX_X = 200
 MAX_Y = 200
 SICKNESS_PROXIMITY = 5
+SICKNESS_DURATION = 50
 
 
 class Agent:
@@ -11,7 +12,9 @@ class Agent:
     def __init__(self, position: np.ndarray, velocity: np.ndarray):
         self.position = position
         self.velocity = velocity
+
         self.is_sick = False
+        self.sickness_countdown = 0
 
     def update(self):
         self.position += self.velocity
@@ -24,12 +27,22 @@ class Agent:
             self.velocity[1] *= -1
             self.position += self.velocity
 
+        if self.is_sick:
+            self.sickness_countdown -= 1
+
+            if self.sickness_countdown == 0:
+                self.is_sick = True  # Wahey - we're no longer sick!
+
+    def make_sick(self):
+        self.is_sick = True
+        self.sickness_countdown = SICKNESS_DURATION
+
     def is_near(self, agent):
         return np.linalg.norm(agent.position - self.position) < SICKNESS_PROXIMITY
 
     def __str__(self):
-        return "AGENT:\tPOS({}, {})\tVEL({}, {})\tSICK({})".format(
-            self.position[0], self.position[1], self.velocity[0], self.velocity[1], self.is_sick)
+        return "AGENT:\tPOS({}, {})\tVEL({}, {})\tSICK({}, {})".format(
+            self.position[0], self.position[1], self.velocity[0], self.velocity[1], self.is_sick, self.sickness_countdown)
 
 
 if __name__ == '__main__':
@@ -45,10 +58,10 @@ if __name__ == '__main__':
         for agent in agents:
             agent.update()
 
-        for agent1, agent2 in itertools.combinations(agents, 2):
+        for agent1, agent2 in itertools.combinations(filter(lambda agent: not agent.is_sick, agents), 2):
             if agent1.is_near(agent2):
-                agent1.is_sick = True
-                agent2.is_sick = True
+                agent1.make_sick()
+                agent2.make_sick()
 
         for agent in agents:
             print(agent)

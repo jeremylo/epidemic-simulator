@@ -45,25 +45,34 @@ class Agent:
             self.position[0], self.position[1], self.velocity[0], self.velocity[1], self.is_sick, self.sickness_countdown)
 
 
-if __name__ == '__main__':
+class Engine:
 
-    import time
+    def __init__(self, agents):
+        self.agents = agents
 
-    a = Agent(np.array([10, 10]), np.array([0, 0]))
-    b = Agent(np.array([20, 10]), np.array([-1, 0]))
-
-    agents = [a, b]
-
-    while True:
-        for agent in agents:
+    def tick(self):
+        for agent in self.agents:
             agent.update()
 
-        for agent1, agent2 in itertools.combinations(filter(lambda agent: not agent.is_sick, agents), 2):
+        for agent1, agent2 in itertools.combinations(filter(lambda agent: not agent.is_sick, self.agents), 2):
             if agent1.is_near(agent2):
                 agent1.make_sick()
                 agent2.make_sick()
 
-        for agent in agents:
+
+if __name__ == '__main__':
+
+    import time
+
+    a = Agent(np.array([10, 10]), np.array([-4, 1]))
+    b = Agent(np.array([20, 10]), np.array([-1, 6]))
+
+    engine = Engine([a, b])
+
+    while True:
+        engine.tick()
+
+        for agent in engine.agents:
             print(agent)
 
         print()

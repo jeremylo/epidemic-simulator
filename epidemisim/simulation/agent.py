@@ -1,6 +1,7 @@
 import numpy as np
 import itertools
 import enum
+import random
 
 MAX_X = 200
 MAX_Y = 200
@@ -12,7 +13,7 @@ class AgentStatus(enum.Enum):
     SUSCEPTIBLE = 1
     INFECTIOUS = 2
     IMMUNE = 3
-    DIED = 4
+    DEAD = 4
 
 
 class Agent:
@@ -24,7 +25,13 @@ class Agent:
 
         self.sickness_countdown = 0
 
+    def calculate_death_chance(self):
+        return 0.1
+
     def update(self):
+        if self.status == AgentStatus.DEAD:
+            return
+
         self.position += self.velocity
 
         if self.position[0] < 0 or self.position[0] > MAX_X:
@@ -39,7 +46,11 @@ class Agent:
             self.sickness_countdown -= 1
 
             if self.sickness_countdown == 0:
-                self.status = AgentStatus.IMMUNE  # Wahey - we're no longer sick!
+                if random.random() < self.calculate_death_chance():
+                    self.status = AgentStatus.DEAD
+                    self.velocity = np.array([0, 0])  # Oh no - we're dead D:
+                else:
+                    self.status = AgentStatus.IMMUNE  # Wahey - we're no longer sick!
 
     def make_sick(self):
         if self.status == AgentStatus.INFECTIOUS:

@@ -2,8 +2,8 @@ import numpy as np
 import enum
 import random
 
-MAX_X = 500
-MAX_Y = 500
+MAX_X = 1000
+MAX_Y = 1000
 SICKNESS_PROXIMITY = 5
 SICKNESS_DURATION = 500
 
@@ -73,11 +73,11 @@ class Engine:
     def __init__(self, agents):
         self.agents = agents
 
-    def tick(self, pool):
-        # for agent in self.agents:
-        #    agent.update()
+    def tick(self):
+        for agent in self.agents:
+            agent.update()
 
-        self.agents = pool.map(Agent.update, self.agents)
+        # self.agents = pool.map(Agent.update, self.agents)
 
         # pool.map(Agent.make_sick, [agent1
         #                           for agent1 in self.agents if agent1.status == AgentStatus.SUSCEPTIBLE

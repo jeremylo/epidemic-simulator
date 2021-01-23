@@ -6,6 +6,14 @@ import matplotlib.animation as animation
 from epidemisim.simulation.agent import Agent, Engine, AgentStatus
 
 
+COLORS = {
+    AgentStatus.SUSCEPTIBLE: 'blue',
+    AgentStatus.INFECTIOUS: 'red',
+    AgentStatus.IMMUNE: 'green',
+    AgentStatus.DEAD: 'black'
+}
+
+
 def create_agents(n=10):
     return [Agent(*(200 * np.random.rand(1, 2)), *
                   (5 * np.random.rand(1, 2))) for i in range(n)]
@@ -16,6 +24,10 @@ def update(agent):
     return (agent.position[0], agent.position[1])
 
 
+def get_color(agent):
+    return COLORS[agent.status]
+
+
 def animate(i):
     engine.tick()
 
@@ -23,9 +35,7 @@ def animate(i):
         [a.position[0] for a in agents], [a.position[1] for a in engine.agents]
     ])
 
-    mat.set_color([
-        'red' if a.status == AgentStatus.INFECTIOUS else 'green' for a in engine.agents
-    ])
+    mat.set_color([get_color(a) for a in engine.agents])
 
     return mat,
 

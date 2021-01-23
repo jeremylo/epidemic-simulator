@@ -2,8 +2,9 @@ import numpy as np
 
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
+import multiprocessing as mp
 
-from epidemisim.simulation.agent import Agent, Engine, AgentStatus
+from epidemisim.simulation.agent import Agent, Engine, AgentStatus, MAX_X, MAX_Y
 
 
 COLORS = {
@@ -15,40 +16,40 @@ COLORS = {
 
 
 def create_agents(n=10):
-    return [Agent(*(200 * np.random.rand(1, 2)), *
-                  (5 * np.random.rand(1, 2))) for i in range(n)]
+    m = min(MAX_X, MAX_Y)
+    sick_agent = Agent(m * np.random.rand(2), 5 * np.random.rand(2))
+    sick_agent.make_sick()
+    return [Agent(m * np.random.rand(2), 5 * np.random.rand(2)) for i in range(n - 1)] + [sick_agent]
 
 
-def update(agent):
-    agent.update()
-    return (agent.position[0], agent.position[1])
+def separate_positions(agents):
+    xs = []
+    ys = []
+    for agent in agents:
+        xs.append(agent.position[0])
+        ys.append(agent.position[1])
+    return xs, ys
 
 
-def get_color(agent):
-    return COLORS[agent.status]
+def animate(i, pool):
+    engine.tick(pool)
 
-
-def animate(i):
-    engine.tick()
-
-    mat.set_offsets(np.c_[
-        [a.position[0] for a in agents], [a.position[1] for a in engine.agents]
-    ])
-
-    mat.set_color([get_color(a) for a in engine.agents])
+    mat.set_offsets([agent.position for agent in engine.agents])
+    mat.set_color([COLORS[agent.status] for agent in engine.agents])
 
     return mat,
 
 
 if __name__ == '__main__':
-    agents = create_agents(10)
+    agents = create_agents(1000)
     engine = Engine(agents)
 
     fig, ax = plt.subplots()
-    ax.axis([0, 200, 0, 200])
+    ax.axis([0, MAX_X, 0, MAX_Y])
 
-    mat = ax.scatter([a.position[0] for a in agents],
-                     [a.position[1] for a in agents])
+    mat = ax.scatter(*separate_positions(agents))
 
-    ani = animation.FuncAnimation(fig, animate, interval=50)
-    plt.show()
+    with mp.Pool(processes=4) as pool:
+        ani = animation.FuncAnimation(
+            fig, animate, fargs=(pool, ), interval=10)
+        plt.show()

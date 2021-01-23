@@ -1,12 +1,11 @@
 import numpy as np
-import itertools
 import enum
 import random
 
-MAX_X = 200
-MAX_Y = 200
+MAX_X = 500
+MAX_Y = 500
 SICKNESS_PROXIMITY = 5
-SICKNESS_DURATION = 50
+SICKNESS_DURATION = 500
 
 
 class AgentStatus(enum.Enum):
@@ -30,7 +29,7 @@ class Agent:
 
     def update(self):
         if self.status == AgentStatus.DEAD:
-            return
+            return self
 
         self.position += self.velocity
 
@@ -52,6 +51,8 @@ class Agent:
                 else:
                     self.status = AgentStatus.IMMUNE  # Wahey - we're no longer sick!
 
+        return self
+
     def make_sick(self):
         if self.status == AgentStatus.INFECTIOUS:
             return
@@ -72,18 +73,30 @@ class Engine:
     def __init__(self, agents):
         self.agents = agents
 
-    def tick(self):
-        for agent in self.agents:
-            agent.update()
+    def tick(self, pool):
+        # for agent in self.agents:
+        #    agent.update()
 
-        for agent1, agent2 in itertools.combinations(filter(lambda agent: agent.status != AgentStatus.INFECTIOUS, self.agents), 2):
-            if agent1.is_near(agent2):
-                agent1.make_sick()
-                agent2.make_sick()
+        self.agents = pool.map(Agent.update, self.agents)
+
+        # pool.map(Agent.make_sick, [agent1
+        #                           for agent1 in self.agents if agent1.status == AgentStatus.SUSCEPTIBLE
+        #                           for agent2 in self.agents if agent2.status == AgentStatus.INFECTIOUS and agent1.is_near(agent2)])
+
+        for agent1 in self.agents:
+            if agent1.status == AgentStatus.SUSCEPTIBLE:
+                for agent2 in self.agents:
+                    if agent2.status == AgentStatus.INFECTIOUS and agent1.is_near(agent2):
+                        agent1.make_sick()
+
+        # for agent1 in self.agents:
+        #    if agent1.status == AgentStatus.INFECTIOUS:
+        #        for agent2 in self.agents:
+        #            if agent2.status == AgentStatus.SUSCEPTIBLE and agent1.is_near(agent2):
+        #                agent2.make_sick()
 
 
 if __name__ == '__main__':
-
     import time
 
     a = Agent(np.array([10, 10]), np.array([0, 0]))

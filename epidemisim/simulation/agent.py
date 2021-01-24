@@ -95,10 +95,10 @@ class Agent:
 
 class Engine:
 
-    def __init__(self, n=200, SICKNESS_PROXIMITY=10,
-                 SICKNESS_DURATION=250,
-                 DISTANCING_FACTOR=0.01,
-                 QUARANTINE_DELAY=249):
+    def __init__(self, n: int = 200, SICKNESS_PROXIMITY: int = 10,
+                 SICKNESS_DURATION: int = 250,
+                 DISTANCING_FACTOR: float = 0.01,
+                 QUARANTINE_DELAY: int = 249):
         self.SICKNESS_PROXIMITY = SICKNESS_PROXIMITY
         self.SICKNESS_DURATION = SICKNESS_DURATION
         self.DISTANCING_FACTOR = DISTANCING_FACTOR

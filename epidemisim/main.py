@@ -54,14 +54,11 @@ def update():
         AgentStatus.SUSCEPTIBLE.name: [engine.stats.get(AgentStatus.SUSCEPTIBLE.name, 0)],
     })
 
-# Create agents
 
+# Simulation
 
 AGENT_COUNT = 500
 engine = Engine(AGENT_COUNT)
-
-
-# Simulation
 
 data = {}
 data['x'], data['y'], data['color'] = summarise(engine.agents)
@@ -71,7 +68,6 @@ p = figure(title="Epidemic Simulation", x_axis_label='x',
            y_axis_label='y', x_range=(0, MAX_X + QUARANTINE_X), y_range=(0, MAX_Y), tools="")
 p.scatter(x='x', y='y', color='color', line_width=2, source=source)
 p.line([MAX_X + 5, MAX_X + 5], [0, MAX_Y], line_width=2, color='#eeeeee')
-
 p.axis.visible = False
 p.xgrid.visible = False
 p.ygrid.visible = False

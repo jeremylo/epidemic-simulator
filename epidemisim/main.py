@@ -34,9 +34,13 @@ data = {'color': ['blue'] * len(agents)}
 data['x'], data['y'] = separate_positions(agents)
 source = ColumnDataSource(data)
 
-p = figure(title="Simulation", x_axis_label='x',
-           y_axis_label='y', x_range=(0, MAX_X), y_range=(0, MAX_Y), tools="")
+p = figure(title="Epidemic Simulation", x_range=(
+    0, MAX_X), y_range=(0, MAX_Y), tools="")
+
 p.scatter(x='x', y='y', color='color', line_width=2, source=source)
+p.axis.visible = False
+p.xgrid.visible = False
+p.ygrid.visible = False
 
 
 def get_color(agent):

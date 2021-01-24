@@ -70,7 +70,7 @@ def add_control(control, query_param):
 PARAMS = {}
 for (key, default) in [('agents', 500), ('sickness_proximity', 30), ('sickness_duration', 12.5), ('quarantine_delay', 5), ('distancing_factor', 0.5)]:
     try:
-        PARAMS[key] = int(
+        PARAMS[key] = float(
             curdoc().session_context.request.arguments.get(key)[0])
     except:
         PARAMS[key] = default
@@ -80,8 +80,9 @@ PARAMS['sickness_duration'] = PARAMS['sickness_duration'] * TICKS_PER_SECOND
 PARAMS['quarantine_delay'] = PARAMS['quarantine_delay'] * TICKS_PER_SECOND
 PARAMS['distancing_factor'] = PARAMS['distancing_factor'] / 1000
 
-# Create agents
-engine = Engine(PARAMS['agents'])
+# Create engine
+engine = Engine(n=int(PARAMS['agents']), SICKNESS_PROXIMITY=int(PARAMS['sickness_proximity']), SICKNESS_DURATION=int(PARAMS['sickness_duration']),
+                DISTANCING_FACTOR=PARAMS['distancing_factor'], QUARANTINE_DELAY=int(PARAMS['quarantine_delay']))
 
 data = {}
 data['x'], data['y'], data['color'] = summarise(engine.agents)
@@ -103,7 +104,7 @@ status_source = ColumnDataSource(pd.DataFrame(np.zeros((1, 4)), columns=names))
 
 p2 = figure(title="Population Health",
             x_range=DataRange1d(start=0, bounds=(0, None)),
-            y_range=(0, PARAMS['agents']))
+            y_range=(0, PARAMS['agents']), tools="")
 p2.grid.minor_grid_line_color = '#eeeeee'
 p2.varea_stack(stackers=names, x='index',
                color=('#718093', '#44bd32', '#e84118', '#00a8ff'), legend_label=names, source=status_source)
@@ -120,13 +121,13 @@ add_control(Slider(start=0, end=500, value=PARAMS['agents'],
 add_control(Slider(start=0, end=30, value=PARAMS['sickness_proximity'],
                    step=1, title="Sickness proximity"), "sickness_proximity")
 
-add_control(Slider(start=1, end=300, value=PARAMS['sickness_duration'],
+add_control(Slider(start=1, end=300, value=PARAMS['sickness_duration'] / TICKS_PER_SECOND,
                    step=0.5, title="Sickness duration (seconds)"), "sickness_duration")
 
-add_control(Slider(start=1, end=300, value=PARAMS['quarantine_delay'],
+add_control(Slider(start=1, end=300, value=PARAMS['quarantine_delay'] / TICKS_PER_SECOND,
                    step=0.5, title="Quarantine delay (seconds)"), "quarantine_delay")
 
-add_control(Slider(start=1, end=100, value=PARAMS['distancing_factor'],
+add_control(Slider(start=1, end=100, value=PARAMS['distancing_factor'] * 1000,
                    step=0.5, title="Distancing factor (percentage)"), "distancing_factor")
 
 update_callback = curdoc().add_periodic_callback(update, 50)

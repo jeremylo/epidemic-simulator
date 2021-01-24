@@ -68,7 +68,7 @@ def add_control(control, query_param):
 
 # Get query parameters/set default parameters
 PARAMS = {}
-for (key, default) in [('agents', 500), ('sickness_proximity', 30), ('sickness_duration', 12.5), ('quarantine_delay', 5), ('distancing_factor', 0.5), ('quarantining', 1)]:
+for (key, default) in [('agents', 200), ('sickness_proximity', 15), ('sickness_duration', 12.5), ('quarantine_delay', 5), ('distancing_factor', 0.5), ('quarantining', 1)]:
     try:
         PARAMS[key] = float(
             curdoc().session_context.request.arguments.get(key)[0])
@@ -85,8 +85,8 @@ if PARAMS['quarantining']:
     PARAMS['quarantine_delay'] = PARAMS['sickness_duration'] + 1
 
 # Create engine
-engine = Engine(n=int(PARAMS['agents']), SICKNESS_PROXIMITY=int(PARAMS['sickness_proximity']), SICKNESS_DURATION=int(PARAMS['sickness_duration']),
-                DISTANCING_FACTOR=PARAMS['distancing_factor'], QUARANTINE_DELAY=int(PARAMS['quarantine_delay']))
+engine = Engine(n=int(PARAMS['agents']), SICKNESS_PROXIMITY=int(PARAMS['sickness_proximity']), SICKNESS_DURATION=int(
+    PARAMS['sickness_duration']), DISTANCING_FACTOR=PARAMS['distancing_factor'], QUARANTINE_DELAY=int(PARAMS['quarantine_delay']))
 
 data = {}
 data['x'], data['y'], data['color'] = summarise(engine.agents)
@@ -132,10 +132,10 @@ curdoc().add_root(
     gridplot([[p, p2]], toolbar_location="left"))
 
 # Add controls
-add_control(Slider(start=0, end=500, value=PARAMS['agents'],
+add_control(Slider(start=1, end=500, value=PARAMS['agents'],
                    step=1, title="Number of agents"), "agents")
 
-add_control(Slider(start=0, end=30, value=PARAMS['sickness_proximity'],
+add_control(Slider(start=1, end=30, value=PARAMS['sickness_proximity'],
                    step=1, title="Sickness proximity"), "sickness_proximity")
 
 add_control(Slider(start=1, end=300, value=PARAMS['sickness_duration'] / TICKS_PER_SECOND,

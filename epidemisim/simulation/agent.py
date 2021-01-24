@@ -7,7 +7,8 @@ from collections import Counter
 MAX_X = 1000
 MAX_Y = 1000
 SICKNESS_PROXIMITY = 10
-SICKNESS_DURATION = 150
+SICKNESS_DURATION = 250
+DISTANCING_FACTOR = 0.005
 
 
 class AgentStatus(enum.Enum):
@@ -49,11 +50,11 @@ class Agent:
         self.position += self.velocity
 
         if self.position[0] < 0 or self.position[0] > MAX_X:
-            self.velocity[0] *= -1
+            self.velocity[0] *= -1.0
             self.position += self.velocity
 
         if self.position[1] < 0 or self.position[1] > MAX_Y:
-            self.velocity[1] *= -1
+            self.velocity[1] *= -1.0
             self.position += self.velocity
 
         if self.status == AgentStatus.INFECTIOUS:
@@ -61,8 +62,8 @@ class Agent:
 
             if self.sickness_countdown == 0:
                 if random.random() < self.calculate_death_chance():
-                    self.status = AgentStatus.DEAD
-                    self.velocity = np.array([0, 0])  # Oh no - we're dead D:
+                    self.status = AgentStatus.DEAD  # Oh no - we're dead D:
+                    self.velocity = np.array([0.0, 0.0])
                 else:
                     self.status = AgentStatus.IMMUNE  # Wahey - we're no longer sick!
 
@@ -107,38 +108,16 @@ class Engine:
         if self.stats.get(AgentStatus.INFECTIOUS.name, 0) <= 0:
             return
 
-        positions = np.empty((self.agent_count, self.agent_count, 2))
+        positions = np.array([agent.position for agent in self.agents])
+        differences = positions.reshape(-1, 1, 2) - positions
+        norms = np.linalg.norm(differences, axis=2)
         for i in range(self.agent_count):
             for j in range(i + 1, self.agent_count):
-                positions[i, j] = self.agents[j].position - \
-                    self.agents[i].position
+                if norms[i, j] < 1.5 * SICKNESS_PROXIMITY:
+                    self.agents[i].velocity -= DISTANCING_FACTOR * \
+                        differences[i, j]
+                    self.agents[j].velocity += DISTANCING_FACTOR * \
+                        differences[i, j]
 
-        norms = np.linalg.norm(positions, axis=2)
-
-        for i in range(self.agent_count):
-            if self.agents[i].status == AgentStatus.SUSCEPTIBLE:
-                for j in range(i + 1, self.agent_count):
-                    # if norms[i, j] < 2 * SICKNESS_PROXIMITY:
-                    #    self.agents[i].velocity -= 0.05 * positions[i, j]
-                    #    self.agents[j].velocity += 0.05 * positions[i, j]
-
-                    if self.agents[j].status == AgentStatus.INFECTIOUS and norms[i, j] < SICKNESS_PROXIMITY:
+                    if self.agents[i].status == AgentStatus.SUSCEPTIBLE and self.agents[j].status == AgentStatus.INFECTIOUS and norms[i, j] < SICKNESS_PROXIMITY:
                         self.agents[i].make_sick()
-
-
-if __name__ == '__main__':
-    import time
-
-    a = Agent(np.array([10, 10]), np.array([0, 0]))
-    b = Agent(np.array([20, 10]), np.array([-1, 0]))
-
-    engine = Engine([a, b])
-
-    while True:
-        engine.tick()
-
-        for agent in engine.agents:
-            print(agent)
-
-        print()
-        time.sleep(0.2)

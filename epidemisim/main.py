@@ -9,7 +9,9 @@ from bokeh.models import ColumnDataSource
 from bokeh.colors import RGB
 from bokeh.models import DataRange1d, Slider, CustomJS
 
-from simulation.agent import Agent, Engine, AgentStatus, MAX_X, MAX_Y, QUARANTINE_X
+from simulation.agent import Engine, AgentStatus, MAX_X, MAX_Y, QUARANTINE_X
+
+TICKS_PER_SECOND = 20
 
 
 def get_color(agent):

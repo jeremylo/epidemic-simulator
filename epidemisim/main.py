@@ -7,7 +7,7 @@ from bokeh.models.sources import ColumnDataSource
 from bokeh.plotting import figure, curdoc
 from bokeh.models import ColumnDataSource
 from bokeh.colors import RGB
-from bokeh.models import DataRange1d, Slider, Toggle, CustomJS
+from bokeh.models import DataRange1d, Slider, Toggle, Div, CustomJS
 
 from simulation.agent import Engine, AgentStatus, MAX_X, MAX_Y, QUARANTINE_X
 
@@ -114,6 +114,18 @@ p2.varea_stack(stackers=names, x='index',
                color=('#718093', '#44bd32', '#e84118', '#00a8ff'), legend_label=names, source=status_source)
 p2.legend.items.reverse()
 p2.legend.click_policy = "hide"
+
+# Add into
+div = Div(text="""
+Epidemic Simulator lets you simulate an epidemic with various configurable parameters.
+<br />
+A visualisation of the population is given on the left, with a graph of the status of the population on the right.
+<br />
+This project was developed by Jeremy Lo Ying Ping and Shubham Jain as part of Hack Cambridge 2021. View the DevPost submission <a href="https://devpost.com/software/epidemic-simulator-wz83sm" target="_blank" rel="noopener noreferer">here</a>!
+<br />
+The code is fully open source, available on GitHub <a href="https://github.com/jeremylo/epidemic-simulator" target="_blank" rel="noopener noreferer">here</a>.
+""", width=1000, style=dict(width='100%', fontSize='1.2em'))
+curdoc().add_root(div)
 
 # Plot to page
 curdoc().add_root(

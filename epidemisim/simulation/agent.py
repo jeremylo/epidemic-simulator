@@ -84,17 +84,20 @@ class Engine:
     def __init__(self, agents):
         self.agents = agents
         self.stats = {
-            AgentStatus.DEAD: 0,
-            AgentStatus.IMMUNE: 0,
-            AgentStatus.INFECTIOUS: 1,
-            AgentStatus.SUSCEPTIBLE: len(agents) - 1
+            AgentStatus.DEAD.name: 0,
+            AgentStatus.IMMUNE.name: 0,
+            AgentStatus.INFECTIOUS.name: 1,
+            AgentStatus.SUSCEPTIBLE.name: len(agents) - 1
         }
+        self.ticks = 0
 
     def tick(self):
+        self.ticks += 1
+
         statuses = []
         for agent in self.agents:
             agent.update()
-            statuses.append(agent.status)
+            statuses.append(agent.status.name)
 
         self.stats = dict(Counter(statuses))
 

@@ -7,7 +7,7 @@ from bokeh.models.sources import ColumnDataSource
 from bokeh.plotting import figure, output_file, show, curdoc
 from bokeh.models import ColumnDataSource
 from bokeh.colors import RGB
-from bokeh.models import DataRange1d
+from bokeh.models import DataRange1d, Slider, CustomJS
 
 from simulation.agent import Agent, Engine, AgentStatus, MAX_X, MAX_Y, QUARANTINE_X
 
@@ -57,7 +57,6 @@ def update():
 
 # Simulation
 
-AGENT_COUNT = 500
 engine = Engine(AGENT_COUNT)
 
 data = {}
@@ -72,9 +71,7 @@ p.axis.visible = False
 p.xgrid.visible = False
 p.ygrid.visible = False
 
-
 # Status Graph
-
 names = [AgentStatus.DEAD.name, AgentStatus.IMMUNE.name,
          AgentStatus.INFECTIOUS.name, AgentStatus.SUSCEPTIBLE.name]
 
@@ -89,8 +86,17 @@ p2.varea_stack(stackers=names, x='index',
 p2.legend.items.reverse()
 
 # Plot to page
-
 curdoc().add_root(
     gridplot([[p, p2]], toolbar_location="left"))
 
-curdoc().add_periodic_callback(update, 50)
+# Add controls
+slider = Slider(start=0, end=500, value=AGENT_COUNT,
+                step=1, title="Number of agents")
+slider.js_on_change('value', CustomJS(code="""
+    const searchParams = new URLSearchParams(window.location.search);
+    searchParams.set("agents", cb_obj.value);
+    window.location.search = searchParams.toString();
+"""))
+curdoc().add_root(slider)
+
+update_callback = curdoc().add_periodic_callback(update, 50)

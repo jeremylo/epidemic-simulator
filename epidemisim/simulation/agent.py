@@ -6,7 +6,7 @@ from collections import Counter
 
 MAX_X = 1000
 MAX_Y = 1000
-SICKNESS_PROXIMITY = 5
+SICKNESS_PROXIMITY = 10
 SICKNESS_DURATION = 150
 
 
@@ -85,6 +85,7 @@ class Engine:
 
     def __init__(self, agents):
         self.agents = agents
+        self.agent_count = len(agents)
         self.stats = {
             AgentStatus.DEAD.name: 0,
             AgentStatus.IMMUNE.name: 0,
@@ -103,12 +104,26 @@ class Engine:
 
         self.stats = dict(Counter(statuses))
 
-        if self.stats.get(AgentStatus.INFECTIOUS.name, 0) > 0:
-            for agent1 in self.agents:
-                if agent1.status == AgentStatus.SUSCEPTIBLE:
-                    for agent2 in self.agents:
-                        if agent2.status == AgentStatus.INFECTIOUS and agent1.is_near(agent2):
-                            agent1.make_sick()
+        if self.stats.get(AgentStatus.INFECTIOUS.name, 0) <= 0:
+            return
+
+        positions = np.empty((self.agent_count, self.agent_count, 2))
+        for i in range(self.agent_count):
+            for j in range(i + 1, self.agent_count):
+                positions[i, j] = self.agents[j].position - \
+                    self.agents[i].position
+
+        norms = np.linalg.norm(positions, axis=2)
+
+        for i in range(self.agent_count):
+            if self.agents[i].status == AgentStatus.SUSCEPTIBLE:
+                for j in range(i + 1, self.agent_count):
+                    # if norms[i, j] < 2 * SICKNESS_PROXIMITY:
+                    #    self.agents[i].velocity -= 0.05 * positions[i, j]
+                    #    self.agents[j].velocity += 0.05 * positions[i, j]
+
+                    if self.agents[j].status == AgentStatus.INFECTIOUS and norms[i, j] < SICKNESS_PROXIMITY:
+                        self.agents[i].make_sick()
 
 
 if __name__ == '__main__':

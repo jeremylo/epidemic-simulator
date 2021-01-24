@@ -4,10 +4,10 @@ import pandas as pd
 
 from bokeh.layouts import gridplot
 from bokeh.models.sources import ColumnDataSource
-from bokeh.plotting import figure, output_file, show, curdoc
+from bokeh.plotting import figure, curdoc
 from bokeh.models import ColumnDataSource
 from bokeh.colors import RGB
-from bokeh.models import DataRange1d, Slider, CustomJS
+from bokeh.models import DataRange1d, Slider, Toggle, CustomJS
 
 from simulation.agent import Engine, AgentStatus, MAX_X, MAX_Y, QUARANTINE_X
 
@@ -68,7 +68,7 @@ def add_control(control, query_param):
 
 # Get query parameters/set default parameters
 PARAMS = {}
-for (key, default) in [('agents', 500), ('sickness_proximity', 30), ('sickness_duration', 12.5), ('quarantine_delay', 5), ('distancing_factor', 0.5)]:
+for (key, default) in [('agents', 500), ('sickness_proximity', 30), ('sickness_duration', 12.5), ('quarantine_delay', 5), ('distancing_factor', 0.5), ('quarantining', 1)]:
     try:
         PARAMS[key] = float(
             curdoc().session_context.request.arguments.get(key)[0])
@@ -79,6 +79,10 @@ for (key, default) in [('agents', 500), ('sickness_proximity', 30), ('sickness_d
 PARAMS['sickness_duration'] = PARAMS['sickness_duration'] * TICKS_PER_SECOND
 PARAMS['quarantine_delay'] = PARAMS['quarantine_delay'] * TICKS_PER_SECOND
 PARAMS['distancing_factor'] = PARAMS['distancing_factor'] / 1000
+PARAMS['quarantining'] = True if PARAMS['quarantining'] == 1 else False
+
+if PARAMS['quarantining']:
+    PARAMS['quarantine_delay'] = PARAMS['sickness_duration'] + 1
 
 # Create engine
 engine = Engine(n=int(PARAMS['agents']), SICKNESS_PROXIMITY=int(PARAMS['sickness_proximity']), SICKNESS_DURATION=int(PARAMS['sickness_duration']),
@@ -109,6 +113,7 @@ p2.grid.minor_grid_line_color = '#eeeeee'
 p2.varea_stack(stackers=names, x='index',
                color=('#718093', '#44bd32', '#e84118', '#00a8ff'), legend_label=names, source=status_source)
 p2.legend.items.reverse()
+p2.legend.click_policy = "hide"
 
 # Plot to page
 curdoc().add_root(
@@ -129,5 +134,14 @@ add_control(Slider(start=1, end=300, value=PARAMS['quarantine_delay'] / TICKS_PE
 
 add_control(Slider(start=1, end=100, value=PARAMS['distancing_factor'] * 1000,
                    step=0.5, title="Distancing factor (percentage)"), "distancing_factor")
+
+toggle = Toggle(label="Quarantine enabled" if PARAMS['quarantining'] else "Quarantine disabled",
+                button_type="success" if PARAMS['quarantining'] else "danger", active=PARAMS['quarantining'])
+toggle.js_on_click(CustomJS(code="""
+    const searchParams = new URLSearchParams(window.location.search);
+    searchParams.set("quarantining", this.active ? 1 : 0);
+    window.location.search = searchParams.toString();
+"""))
+curdoc().add_root(toggle)
 
 update_callback = curdoc().add_periodic_callback(update, 50)

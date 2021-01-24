@@ -9,19 +9,12 @@ from bokeh.models import ColumnDataSource
 from bokeh.colors import RGB
 from bokeh.models import DataRange1d
 
-from simulation.agent import Agent, Engine, AgentStatus, MAX_X, MAX_Y
-
-
-def create_agents(n=10):
-    m = min(MAX_X, MAX_Y)
-    sick_agent = Agent(m * np.random.rand(2), 5 * np.random.rand(2))
-    sick_agent.make_sick()
-    return [Agent(m * np.random.rand(2), 5 * np.random.rand(2)) for i in range(n - 1)] + [sick_agent]
+from simulation.agent import Agent, Engine, AgentStatus, MAX_X, MAX_Y, QUARANTINE_X
 
 
 def get_color(agent):
     if agent.status == AgentStatus.DEAD:
-        return '#718093'  # 2f3640
+        return RGB(113, 128, 147).lighten(agent.frailty).to_css()  # 718093
     elif agent.status == AgentStatus.IMMUNE:
         return RGB(68, 189, 50).lighten(agent.frailty).to_css()  # 44bd32
     elif agent.status == AgentStatus.INFECTIOUS:
@@ -44,8 +37,8 @@ def summarise(agents):
 def update():
     engine.tick()
 
-    s = slice(len(agents))
-    data['x'], data['y'], data['color'] = summarise(agents)
+    s = slice(engine.agent_count)
+    data['x'], data['y'], data['color'] = summarise(engine.agents)
 
     source.patch({
         'x': [(s, data['x'])],
@@ -65,19 +58,20 @@ def update():
 
 
 AGENT_COUNT = 500
-agents = create_agents(AGENT_COUNT)
-engine = Engine(agents)
+engine = Engine(AGENT_COUNT)
 
 
 # Simulation
 
 data = {}
-data['x'], data['y'], data['color'] = summarise(agents)
+data['x'], data['y'], data['color'] = summarise(engine.agents)
 source = ColumnDataSource(data)
 
 p = figure(title="Epidemic Simulation", x_axis_label='x',
-           y_axis_label='y', x_range=(0, MAX_X), y_range=(0, MAX_Y), tools="")
+           y_axis_label='y', x_range=(0, MAX_X + QUARANTINE_X), y_range=(0, MAX_Y), tools="")
 p.scatter(x='x', y='y', color='color', line_width=2, source=source)
+p.line([MAX_X + 5, MAX_X + 5], [0, MAX_Y], line_width=2, color='#eeeeee')
+
 p.axis.visible = False
 p.xgrid.visible = False
 p.ygrid.visible = False

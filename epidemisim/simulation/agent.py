@@ -6,9 +6,7 @@ from collections import Counter
 
 MAX_X = 1000
 MAX_Y = 1000
-SICKNESS_PROXIMITY = 10
-SICKNESS_DURATION = 250
-DISTANCING_FACTOR = 0.005
+QUARANTINE_X = 200
 
 
 class AgentStatus(enum.Enum):
@@ -20,11 +18,15 @@ class AgentStatus(enum.Enum):
 
 class Agent:
 
-    def __init__(self, position: np.ndarray, velocity: np.ndarray):
+    def __init__(self, position: np.ndarray, velocity: np.ndarray, SICKNESS_DURATION: int, QUARANTINE_DELAY: int):
+        self.SICKNESS_DURATION = SICKNESS_DURATION
+        self.QUARANTINE_DELAY = QUARANTINE_DELAY
+
         self.position = position
         self.velocity = velocity
         self.status = AgentStatus.SUSCEPTIBLE
         self.sickness_countdown = 0
+        self.quarantined = False
 
         # This roughly fits an estimate for Covid-19 mortality by age
         self.age = random.randint(18, 100)
@@ -60,22 +62,31 @@ class Agent:
         if self.status == AgentStatus.INFECTIOUS:
             self.sickness_countdown -= 1
 
+            if self.sickness_countdown == self.SICKNESS_DURATION - self.QUARANTINE_DELAY - 1:
+                self.quarantined = True
+                self.position = np.array([random.uniform(
+                    MAX_X + 10, MAX_X + QUARANTINE_X), random.uniform(10, MAX_Y - 10)])
+
+                self.velocity = np.array([0.0, 0.0])
+
             if self.sickness_countdown == 0:
                 if random.random() < self.calculate_death_chance():
                     self.status = AgentStatus.DEAD  # Oh no - we're dead D:
                     self.velocity = np.array([0.0, 0.0])
                 else:
                     self.status = AgentStatus.IMMUNE  # Wahey - we're no longer sick!
+                    self.quarantined = False
+
+                    m = min(MAX_X, MAX_Y)
+                    self.position = m * np.random.rand(2)
+                    self.velocity = 5 * np.random.rand(2)
 
     def make_sick(self):
         if self.status == AgentStatus.INFECTIOUS:
             return
 
         self.status = AgentStatus.INFECTIOUS
-        self.sickness_countdown = SICKNESS_DURATION
-
-    def is_near(self, agent):
-        return np.linalg.norm(agent.position - self.position) < SICKNESS_PROXIMITY
+        self.sickness_countdown = self.SICKNESS_DURATION
 
     def __str__(self):
         return "AGENT:\tPOS({}, {})\tVEL({}, {})\tSTATUS({}, {})".format(
@@ -84,16 +95,32 @@ class Agent:
 
 class Engine:
 
-    def __init__(self, agents):
-        self.agents = agents
-        self.agent_count = len(agents)
+    def __init__(self, n=200, SICKNESS_PROXIMITY=10,
+                 SICKNESS_DURATION=250,
+                 DISTANCING_FACTOR=0.01,
+                 QUARANTINE_DELAY=249):
+        self.SICKNESS_PROXIMITY = SICKNESS_PROXIMITY
+        self.SICKNESS_DURATION = SICKNESS_DURATION
+        self.DISTANCING_FACTOR = DISTANCING_FACTOR
+        self.QUARANTINE_DELAY = QUARANTINE_DELAY
+
+        self.agents = self.create_agents(n)
+        self.agent_count = n
         self.stats = {
             AgentStatus.DEAD.name: 0,
             AgentStatus.IMMUNE.name: 0,
             AgentStatus.INFECTIOUS.name: 1,
-            AgentStatus.SUSCEPTIBLE.name: len(agents) - 1
+            AgentStatus.SUSCEPTIBLE.name: n - 1
         }
         self.ticks = 0
+
+    def create_agents(self, n):
+        m = min(MAX_X, MAX_Y)
+        sick_agent = Agent(m * np.random.rand(2), 5 * np.random.rand(2),
+                           self.SICKNESS_DURATION, self.QUARANTINE_DELAY)
+        sick_agent.make_sick()
+        return [Agent(m * np.random.rand(2), 5 * np.random.rand(2), self.SICKNESS_DURATION, self.QUARANTINE_DELAY)
+                for i in range(n - 1)] + [sick_agent]
 
     def tick(self):
         self.ticks += 1
@@ -113,11 +140,11 @@ class Engine:
         norms = np.linalg.norm(differences, axis=2)
         for i in range(self.agent_count):
             for j in range(i + 1, self.agent_count):
-                if norms[i, j] < 1.5 * SICKNESS_PROXIMITY:
-                    self.agents[i].velocity -= DISTANCING_FACTOR * \
+                if norms[i, j] < 1.5 * self.SICKNESS_PROXIMITY:
+                    self.agents[i].velocity -= self.DISTANCING_FACTOR * \
                         differences[i, j]
-                    self.agents[j].velocity += DISTANCING_FACTOR * \
+                    self.agents[j].velocity += self.DISTANCING_FACTOR * \
                         differences[i, j]
 
-                    if self.agents[i].status == AgentStatus.SUSCEPTIBLE and self.agents[j].status == AgentStatus.INFECTIOUS and norms[i, j] < SICKNESS_PROXIMITY:
+                    if self.agents[i].status == AgentStatus.SUSCEPTIBLE and self.agents[j].status == AgentStatus.INFECTIOUS and norms[i, j] < self.SICKNESS_PROXIMITY:
                         self.agents[i].make_sick()

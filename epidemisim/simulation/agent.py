@@ -2,6 +2,8 @@ import numpy as np
 import enum
 import random
 
+from collections import Counter
+
 MAX_X = 1000
 MAX_Y = 1000
 SICKNESS_PROXIMITY = 5
@@ -21,15 +23,26 @@ class Agent:
         self.position = position
         self.velocity = velocity
         self.status = AgentStatus.SUSCEPTIBLE
-
         self.sickness_countdown = 0
 
+        # This roughly fits an estimate for Covid-19 mortality by age
+        self.age = random.randint(18, 100)
+        self.frailty = min(0.0000503 * 1.09792**self.age, 1)
+
+        # Data used to fit the exponential:
+        # 40yr -> 0.3% chance
+        # 50yr -> 0.4% chance
+        # 60yr -> 1.0% chance
+        # 70yr -> 3.5% chance
+        # 80yr -> 13.% chance
+        # 90yr -> 20.% chance
+
     def calculate_death_chance(self):
-        return 0.1
+        return self.frailty
 
     def update(self):
         if self.status == AgentStatus.DEAD:
-            return self
+            return
 
         self.position += self.velocity
 
@@ -51,8 +64,6 @@ class Agent:
                 else:
                     self.status = AgentStatus.IMMUNE  # Wahey - we're no longer sick!
 
-        return self
-
     def make_sick(self):
         if self.status == AgentStatus.INFECTIOUS:
             return
@@ -72,10 +83,20 @@ class Engine:
 
     def __init__(self, agents):
         self.agents = agents
+        self.stats = {
+            AgentStatus.DEAD: 0,
+            AgentStatus.IMMUNE: 0,
+            AgentStatus.INFECTIOUS: 1,
+            AgentStatus.SUSCEPTIBLE: len(agents) - 1
+        }
 
     def tick(self):
+        statuses = []
         for agent in self.agents:
             agent.update()
+            statuses.append(agent.status)
+
+        self.stats = dict(Counter(statuses))
 
         # self.agents = pool.map(Agent.update, self.agents)
 

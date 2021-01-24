@@ -6,15 +6,9 @@ from bokeh.layouts import gridplot
 from bokeh.models.sources import ColumnDataSource
 from bokeh.plotting import figure, output_file, show, curdoc
 from bokeh.models import ColumnDataSource
+from bokeh.colors import RGB
 
 from simulation.agent import Agent, Engine, AgentStatus, MAX_X, MAX_Y
-
-COLORS = {
-    AgentStatus.SUSCEPTIBLE: 'blue',
-    AgentStatus.INFECTIOUS: 'red',
-    AgentStatus.IMMUNE: 'green',
-    AgentStatus.DEAD: 'black'
-}
 
 
 def create_agents(n=10):
@@ -45,12 +39,23 @@ p = figure(title="Simulation", x_axis_label='x',
 p.scatter(x='x', y='y', color='color', line_width=2, source=source)
 
 
+def get_color(agent):
+    if agent.status == AgentStatus.DEAD:
+        return '#718093'  # 2f3640
+    elif agent.status == AgentStatus.IMMUNE:
+        return '#44bd32'
+    elif agent.status == AgentStatus.INFECTIOUS:
+        return RGB(232, 65, 24).lighten(agent.frailty).to_css()
+    elif agent.status == AgentStatus.SUSCEPTIBLE:
+        return RGB(0, 168, 255).lighten(agent.frailty).to_css()
+
+
 def update():
     engine.tick()
     s = slice(len(agents))
     data['x'] = [a.position[0] for a in agents]
     data['y'] = [a.position[1] for a in agents]
-    data['color'] = [COLORS[a.status] for a in agents]
+    data['color'] = [get_color(a) for a in agents]
 
     source.patch({
         'x': [(s, data['x'])],

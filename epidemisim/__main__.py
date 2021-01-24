@@ -41,7 +41,7 @@ def animate(i, pool):
 
 
 if __name__ == '__main__':
-    agents = create_agents(1000)
+    agents = create_agents(200)
     engine = Engine(agents)
 
     fig, ax = plt.subplots()
@@ -49,7 +49,7 @@ if __name__ == '__main__':
 
     mat = ax.scatter(*separate_positions(agents))
 
-    with mp.Pool(processes=4) as pool:
+    with mp.Pool(processes=10) as pool:
         ani = animation.FuncAnimation(
             fig, animate, fargs=(pool, ), interval=10)
         plt.show()

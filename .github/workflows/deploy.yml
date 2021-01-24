@@ -1,0 +1,19 @@
+name: Deploy
+on:
+  push:
+    branches: 'main'
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v2
+      - name: Rebuild & restart containers on server
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          port: ${{ secrets.PORT }}
+          key: ${{ secrets.KEY }}
+          script: cd ~/epidemisim && git checkout -f main && systemctl restart bokeh-epidemisim

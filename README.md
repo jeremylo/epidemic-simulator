@@ -1,23 +1,15 @@
 # Epidemic Simulator
 
-Run with the following command:
+First, install dependencies with the following command:
 
 ```bash
-$ python -m epidemisim
+$ python -m pip install -r requirements.txt
 ```
 
-## Running visualisations in the browser
-
-Install [Bokeh](https://bokeh.org/):
-
-```bash
-$ python -m pip install bokeh
-```
-
-And then run the script:
+Then, run the visualisation server using the following command:
 
 ```bash
 $ bokeh serve --show epidemisim
 ```
 
-This should automatically start a server and show it in your browser.
+This will allow you to visualise the simulation in your browser.

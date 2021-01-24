@@ -23,11 +23,11 @@ def get_color(agent):
     if agent.status == AgentStatus.DEAD:
         return '#718093'  # 2f3640
     elif agent.status == AgentStatus.IMMUNE:
-        return '#44bd32'
+        return RGB(68, 189, 50).lighten(agent.frailty).to_css()  # 44bd32
     elif agent.status == AgentStatus.INFECTIOUS:
-        return RGB(232, 65, 24).lighten(agent.frailty).to_css()
+        return RGB(232, 65, 24).lighten(agent.frailty).to_css()  # e84118
     elif agent.status == AgentStatus.SUSCEPTIBLE:
-        return RGB(0, 168, 255).lighten(agent.frailty).to_css()
+        return RGB(0, 168, 255).lighten(agent.frailty).to_css()  # 00a8ff
 
 
 def summarise(agents):
@@ -90,7 +90,7 @@ names = [AgentStatus.DEAD.name, AgentStatus.IMMUNE.name,
 
 status_source = ColumnDataSource(pd.DataFrame(np.zeros((1, 4)), columns=names))
 
-p2 = figure(title="Agent Statuses",
+p2 = figure(title="Population Health",
             x_range=DataRange1d(start=0, bounds=(0, None)),
             y_range=(0, AGENT_COUNT))
 p2.grid.minor_grid_line_color = '#eeeeee'

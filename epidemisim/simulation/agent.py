@@ -7,7 +7,7 @@ from collections import Counter
 MAX_X = 1000
 MAX_Y = 1000
 SICKNESS_PROXIMITY = 5
-SICKNESS_DURATION = 500
+SICKNESS_DURATION = 150
 
 
 class AgentStatus(enum.Enum):
@@ -27,8 +27,6 @@ class Agent:
 
         # This roughly fits an estimate for Covid-19 mortality by age
         self.age = random.randint(18, 100)
-        self.frailty = min(0.0000503 * 1.09792**self.age, 1)
-
         # Data used to fit the exponential:
         # 40yr -> 0.3% chance
         # 50yr -> 0.4% chance
@@ -36,6 +34,10 @@ class Agent:
         # 70yr -> 3.5% chance
         # 80yr -> 13.% chance
         # 90yr -> 20.% chance
+
+        self.comorbity = 0.75 + max(0.5 * random.random(), 0.15)
+        self.frailty = max(
+            min(min(0.0000503 * 1.09792**self.age, 1) * self.comorbity, 1), 0)
 
     def calculate_death_chance(self):
         return self.frailty
@@ -101,23 +103,12 @@ class Engine:
 
         self.stats = dict(Counter(statuses))
 
-        # self.agents = pool.map(Agent.update, self.agents)
-
-        # pool.map(Agent.make_sick, [agent1
-        #                           for agent1 in self.agents if agent1.status == AgentStatus.SUSCEPTIBLE
-        #                           for agent2 in self.agents if agent2.status == AgentStatus.INFECTIOUS and agent1.is_near(agent2)])
-
-        for agent1 in self.agents:
-            if agent1.status == AgentStatus.SUSCEPTIBLE:
-                for agent2 in self.agents:
-                    if agent2.status == AgentStatus.INFECTIOUS and agent1.is_near(agent2):
-                        agent1.make_sick()
-
-        # for agent1 in self.agents:
-        #    if agent1.status == AgentStatus.INFECTIOUS:
-        #        for agent2 in self.agents:
-        #            if agent2.status == AgentStatus.SUSCEPTIBLE and agent1.is_near(agent2):
-        #                agent2.make_sick()
+        if self.stats.get(AgentStatus.INFECTIOUS.name, 0) > 0:
+            for agent1 in self.agents:
+                if agent1.status == AgentStatus.SUSCEPTIBLE:
+                    for agent2 in self.agents:
+                        if agent2.status == AgentStatus.INFECTIOUS and agent1.is_near(agent2):
+                            agent1.make_sick()
 
 
 if __name__ == '__main__':

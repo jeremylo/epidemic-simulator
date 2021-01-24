@@ -16,4 +16,4 @@ jobs:
           username: ${{ secrets.USERNAME }}
           port: ${{ secrets.PORT }}
           key: ${{ secrets.KEY }}
-          script: cd ~/epidemic-simulator && git checkout -f main && systemctl restart bokeh-epidemisim
+          script: cd ~/epidemic-simulator && git fetch origin main && git reset --hard origin/main && systemctl restart bokeh-epidemisim

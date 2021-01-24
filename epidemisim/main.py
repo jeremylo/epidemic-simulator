@@ -55,9 +55,31 @@ def update():
     })
 
 
-# Simulation
+def add_control(control, query_param):
+    control.js_on_change('value', CustomJS(code="""
+    const searchParams = new URLSearchParams(window.location.search);
+    searchParams.set("{query_param}", cb_obj.value);
+    window.location.search = searchParams.toString();
+    """.format(query_param=query_param)))
+    curdoc().add_root(control)
 
-engine = Engine(AGENT_COUNT)
+
+# Get query parameters/set default parameters
+PARAMS = {}
+for (key, default) in [('agents', 500), ('sickness_proximity', 30), ('sickness_duration', 12.5), ('quarantine_delay', 5), ('distancing_factor', 0.5)]:
+    try:
+        PARAMS[key] = int(
+            curdoc().session_context.request.arguments.get(key)[0])
+    except:
+        PARAMS[key] = default
+
+# Scale any parameters as required
+PARAMS['sickness_duration'] = PARAMS['sickness_duration'] * TICKS_PER_SECOND
+PARAMS['quarantine_delay'] = PARAMS['quarantine_delay'] * TICKS_PER_SECOND
+PARAMS['distancing_factor'] = PARAMS['distancing_factor'] / 1000
+
+# Create agents
+engine = Engine(PARAMS['agents'])
 
 data = {}
 data['x'], data['y'], data['color'] = summarise(engine.agents)
@@ -79,7 +101,7 @@ status_source = ColumnDataSource(pd.DataFrame(np.zeros((1, 4)), columns=names))
 
 p2 = figure(title="Population Health",
             x_range=DataRange1d(start=0, bounds=(0, None)),
-            y_range=(0, AGENT_COUNT))
+            y_range=(0, PARAMS['agents']))
 p2.grid.minor_grid_line_color = '#eeeeee'
 p2.varea_stack(stackers=names, x='index',
                color=('#718093', '#44bd32', '#e84118', '#00a8ff'), legend_label=names, source=status_source)
@@ -90,13 +112,19 @@ curdoc().add_root(
     gridplot([[p, p2]], toolbar_location="left"))
 
 # Add controls
-slider = Slider(start=0, end=500, value=AGENT_COUNT,
-                step=1, title="Number of agents")
-slider.js_on_change('value', CustomJS(code="""
-    const searchParams = new URLSearchParams(window.location.search);
-    searchParams.set("agents", cb_obj.value);
-    window.location.search = searchParams.toString();
-"""))
-curdoc().add_root(slider)
+add_control(Slider(start=0, end=500, value=PARAMS['agents'],
+                   step=1, title="Number of agents"), "agents")
+
+add_control(Slider(start=0, end=30, value=PARAMS['sickness_proximity'],
+                   step=1, title="Sickness proximity"), "sickness_proximity")
+
+add_control(Slider(start=1, end=300, value=PARAMS['sickness_duration'],
+                   step=0.5, title="Sickness duration (seconds)"), "sickness_duration")
+
+add_control(Slider(start=1, end=300, value=PARAMS['quarantine_delay'],
+                   step=0.5, title="Quarantine delay (seconds)"), "quarantine_delay")
+
+add_control(Slider(start=1, end=100, value=PARAMS['distancing_factor'],
+                   step=0.5, title="Distancing factor (percentage)"), "distancing_factor")
 
 update_callback = curdoc().add_periodic_callback(update, 50)

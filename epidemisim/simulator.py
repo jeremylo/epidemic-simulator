@@ -145,8 +145,8 @@ class Engine:
         for i in range(self.agent_count):
             for j in range(i + 1, self.agent_count):
                 if norms[i, j] < self.DISTANCING_RADIUS_FACTOR * self.SICKNESS_PROXIMITY:
-                    acceleration = self.DISTANCING_FACTOR * differences[i, j] / \
-                        np.dot(differences[i, j], differences[i, j])
+                    acceleration = self.DISTANCING_FACTOR * \
+                        differences[i, j] / norms[i, j]**2
 
                     self.agents[i].velocity -= acceleration
                     self.agents[j].velocity += acceleration

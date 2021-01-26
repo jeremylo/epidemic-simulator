@@ -8,10 +8,17 @@ from bokeh.models import ColumnDataSource
 from bokeh.colors import RGB
 from bokeh.models import DataRange1d, Slider, Toggle, Div, CustomJS
 
-from .simulator import Engine, AgentStatus, MAX_X, MAX_Y, QUARANTINE_X
+from .simulator import Engine, AgentStatus, MAX_X, MAX_Y, QUARANTINE_X, TICKS_PER_SECOND
 
-TICKS_PER_SECOND = 20
 TO_BE_TERMINATED = False
+DEFAULT_PARAMS = {
+    'agents': 200,
+    'sickness_proximity': 15,
+    'sickness_duration': 12.5,
+    'quarantine_delay': 5,
+    'distancing_factor': 0.5,
+    'quarantining': 0
+}
 
 
 def get_color(agent):
@@ -79,26 +86,26 @@ def add_control(control, query_param):
 
 
 # Get query parameters/set default parameters
-PARAMS = {}
-for key, default in [('agents', 200), ('sickness_proximity', 15), ('sickness_duration', 12.5), ('quarantine_delay', 5), ('distancing_factor', 0.5), ('quarantining', 0)]:
+params = {}
+for key in DEFAULT_PARAMS:
     try:
-        PARAMS[key] = float(
+        params[key] = float(
             curdoc().session_context.request.arguments.get(key)[0])
     except:
-        PARAMS[key] = default
+        params[key] = DEFAULT_PARAMS[key]
 
 # Scale any parameters as required
-PARAMS['sickness_duration'] = PARAMS['sickness_duration'] * TICKS_PER_SECOND
-PARAMS['quarantine_delay'] = PARAMS['quarantine_delay'] * TICKS_PER_SECOND
-PARAMS['distancing_factor'] = PARAMS['distancing_factor'] / 1000
-PARAMS['quarantining'] = True if PARAMS['quarantining'] == 1 else False
+params['sickness_duration'] *= TICKS_PER_SECOND
+params['quarantine_delay'] *= TICKS_PER_SECOND
+params['distancing_factor'] /= 1000
+params['quarantining'] = params['quarantining'] == 1
 
-if PARAMS['quarantining']:
-    PARAMS['quarantine_delay'] = PARAMS['sickness_duration'] + 100
+if not params['quarantining']:
+    params['quarantine_delay'] = params['sickness_duration'] + 1
 
 # Create engine
-engine = Engine(n=int(PARAMS['agents']), SICKNESS_PROXIMITY=int(PARAMS['sickness_proximity']), SICKNESS_DURATION=int(
-    PARAMS['sickness_duration']), DISTANCING_FACTOR=PARAMS['distancing_factor'], QUARANTINE_DELAY=int(PARAMS['quarantine_delay']))
+engine = Engine(n=int(params['agents']), SICKNESS_PROXIMITY=int(params['sickness_proximity']), SICKNESS_DURATION=int(
+    params['sickness_duration']), DISTANCING_FACTOR=params['distancing_factor'], QUARANTINE_DELAY=int(params['quarantine_delay']))
 
 data = {}
 data['x'], data['y'], data['color'] = summarise(engine.agents)
@@ -122,7 +129,7 @@ status_source = ColumnDataSource(pd.DataFrame(np.zeros((1, 4)), columns=names))
 
 p2 = figure(title="Population Health",
             x_range=DataRange1d(start=0, bounds=(0, None)),
-            y_range=(0, PARAMS['agents']), tools="")
+            y_range=(0, params['agents']), tools="")
 p2.grid.minor_grid_line_color = '#eeeeee'
 p2.varea_stack(stackers=names, x='index',
                color=('#718093', '#44bd32', '#e84118', '#00a8ff'), legend_label=names, source=status_source)
@@ -130,23 +137,23 @@ p2.legend.items.reverse()
 p2.legend.click_policy = "hide"
 
 # Add controls
-c1 = add_control(Slider(start=1, end=500, value=PARAMS['agents'],
+c1 = add_control(Slider(start=1, end=500, value=params['agents'],
                         step=1, title="Number of agents"), "agents")
 
-c2 = add_control(Slider(start=1, end=30, value=PARAMS['sickness_proximity'],
+c2 = add_control(Slider(start=1, end=30, value=params['sickness_proximity'],
                         step=1, title="Sickness proximity"), "sickness_proximity")
 
-c3 = add_control(Slider(start=1, end=300, value=PARAMS['sickness_duration'] / TICKS_PER_SECOND,
+c3 = add_control(Slider(start=1, end=300, value=params['sickness_duration'] / TICKS_PER_SECOND,
                         step=0.5, title="Sickness duration (seconds)"), "sickness_duration")
 
-c4 = add_control(Slider(start=1, end=300, value=PARAMS['quarantine_delay'] / TICKS_PER_SECOND,
+c4 = add_control(Slider(start=1, end=300, value=params['quarantine_delay'] / TICKS_PER_SECOND,
                         step=0.5, title="Quarantine delay (seconds)"), "quarantine_delay")
 
-c5 = add_control(Slider(start=1, end=100, value=PARAMS['distancing_factor'] * 1000,
+c5 = add_control(Slider(start=1, end=100, value=params['distancing_factor'] * 1000,
                         step=0.5, title="Distancing factor (percentage)"), "distancing_factor")
 
-toggle = Toggle(label="Quarantine enabled" if PARAMS['quarantining'] else "Quarantine disabled",
-                button_type="success" if PARAMS['quarantining'] else "danger", active=PARAMS['quarantining'])
+toggle = Toggle(label="Quarantine enabled" if params['quarantining'] else "Quarantine disabled",
+                button_type="success" if params['quarantining'] else "danger", active=params['quarantining'])
 toggle.js_on_click(CustomJS(code="""
     const searchParams = new URLSearchParams(window.location.search);
     searchParams.set("quarantining", this.active ? 1 : 0);

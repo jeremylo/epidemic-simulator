@@ -4,6 +4,7 @@ import random
 
 from collections import Counter
 
+TICKS_PER_SECOND = 20
 MAX_X = 1000
 MAX_Y = 1000
 QUARANTINE_X = 200

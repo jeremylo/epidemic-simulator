@@ -36,6 +36,18 @@ def summarise(agents):
     return xs, ys, colors
 
 
+to_be_terminated = False
+
+
+def terminate():
+    global to_be_terminated
+    if to_be_terminated:
+        return
+
+    to_be_terminated = True
+    curdoc().remove_periodic_callback(update_callback)
+
+
 def update():
     engine.tick()
 
@@ -55,6 +67,9 @@ def update():
         AgentStatus.INFECTIOUS.name: [engine.stats.get(AgentStatus.INFECTIOUS.name, 0)],
         AgentStatus.SUSCEPTIBLE.name: [engine.stats.get(AgentStatus.SUSCEPTIBLE.name, 0)],
     })
+
+    if engine.stats.get(AgentStatus.INFECTIOUS.name, 0) == 0 and not to_be_terminated:
+        curdoc().add_timeout_callback(terminate, 8000)
 
 
 def add_control(control, query_param):

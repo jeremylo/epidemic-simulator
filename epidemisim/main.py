@@ -1,5 +1,4 @@
 import numpy as np
-import multiprocessing as mp
 import pandas as pd
 
 from bokeh.layouts import gridplot
@@ -9,9 +8,10 @@ from bokeh.models import ColumnDataSource
 from bokeh.colors import RGB
 from bokeh.models import DataRange1d, Slider, Toggle, Div, CustomJS
 
-from simulation.agent import Engine, AgentStatus, MAX_X, MAX_Y, QUARANTINE_X
+from .simulator import Engine, AgentStatus, MAX_X, MAX_Y, QUARANTINE_X
 
 TICKS_PER_SECOND = 20
+TO_BE_TERMINATED = False
 
 
 def get_color(agent):
@@ -36,15 +36,12 @@ def summarise(agents):
     return xs, ys, colors
 
 
-to_be_terminated = False
-
-
 def terminate():
-    global to_be_terminated
-    if to_be_terminated:
+    global TO_BE_TERMINATED
+    if TO_BE_TERMINATED:
         return
 
-    to_be_terminated = True
+    TO_BE_TERMINATED = True
     curdoc().remove_periodic_callback(update_callback)
 
 
@@ -68,7 +65,7 @@ def update():
         AgentStatus.SUSCEPTIBLE.name: [engine.stats.get(AgentStatus.SUSCEPTIBLE.name, 0)],
     })
 
-    if engine.stats.get(AgentStatus.INFECTIOUS.name, 0) == 0 and not to_be_terminated:
+    if engine.stats.get(AgentStatus.INFECTIOUS.name, 0) == 0 and not TO_BE_TERMINATED:
         curdoc().add_timeout_callback(terminate, 8000)
 
 
@@ -78,12 +75,12 @@ def add_control(control, query_param):
     searchParams.set("{query_param}", cb_obj.value);
     window.location.search = searchParams.toString();
     """.format(query_param=query_param)))
-    curdoc().add_root(control)
+    return control
 
 
 # Get query parameters/set default parameters
 PARAMS = {}
-for (key, default) in [('agents', 200), ('sickness_proximity', 15), ('sickness_duration', 12.5), ('quarantine_delay', 5), ('distancing_factor', 0.5), ('quarantining', 1)]:
+for key, default in [('agents', 200), ('sickness_proximity', 15), ('sickness_duration', 12.5), ('quarantine_delay', 5), ('distancing_factor', 0.5), ('quarantining', 0)]:
     try:
         PARAMS[key] = float(
             curdoc().session_context.request.arguments.get(key)[0])
@@ -97,7 +94,7 @@ PARAMS['distancing_factor'] = PARAMS['distancing_factor'] / 1000
 PARAMS['quarantining'] = True if PARAMS['quarantining'] == 1 else False
 
 if PARAMS['quarantining']:
-    PARAMS['quarantine_delay'] = PARAMS['sickness_duration'] + 1
+    PARAMS['quarantine_delay'] = PARAMS['sickness_duration'] + 100
 
 # Create engine
 engine = Engine(n=int(PARAMS['agents']), SICKNESS_PROXIMITY=int(PARAMS['sickness_proximity']), SICKNESS_DURATION=int(
@@ -107,13 +104,15 @@ data = {}
 data['x'], data['y'], data['color'] = summarise(engine.agents)
 source = ColumnDataSource(data)
 
-p = figure(title="Epidemic Simulation", x_axis_label='x',
-           y_axis_label='y', x_range=(0, MAX_X + QUARANTINE_X), y_range=(0, MAX_Y), tools="")
-p.scatter(x='x', y='y', color='color', line_width=2, source=source)
-p.line([MAX_X + 5, MAX_X + 5], [0, MAX_Y], line_width=2, color='#eeeeee')
-p.axis.visible = False
-p.xgrid.visible = False
-p.ygrid.visible = False
+p1 = figure(title="Epidemic Simulation", x_axis_label='x',
+            y_axis_label='y', x_range=(0, MAX_X + QUARANTINE_X), y_range=(0, MAX_Y), tools="")
+p1.scatter(x='x', y='y', color='color', line_width=2, source=source)
+p1.line([MAX_X + 5, MAX_X + 5], [0, MAX_Y], line_width=2, color='#eeeeee')
+p1.axis.visible = False
+p1.xgrid.visible = False
+p1.ygrid.visible = False
+
+update_callback = curdoc().add_periodic_callback(update, 50)
 
 # Status Graph
 names = [AgentStatus.DEAD.name, AgentStatus.IMMUNE.name,
@@ -130,37 +129,21 @@ p2.varea_stack(stackers=names, x='index',
 p2.legend.items.reverse()
 p2.legend.click_policy = "hide"
 
-# Add into
-div = Div(text="""
-Epidemic Simulator lets you simulate an epidemic with various configurable parameters.
-<br />
-A visualisation of the population is given on the left, with a graph of the status of the population on the right.
-<br />
-This project was developed by Jeremy Lo Ying Ping and Shubham Jain as part of Hack Cambridge 2021. View the DevPost submission <a href="https://devpost.com/software/epidemic-simulator-wz83sm" target="_blank" rel="noopener noreferer">here</a>!
-<br />
-The code is fully open source, available on GitHub <a href="https://github.com/jeremylo/epidemic-simulator" target="_blank" rel="noopener noreferer">here</a>.
-""", width=1000, style=dict(width='100%', fontSize='1.2em'))
-curdoc().add_root(div)
-
-# Plot to page
-curdoc().add_root(
-    gridplot([[p, p2]], toolbar_location="left"))
-
 # Add controls
-add_control(Slider(start=1, end=500, value=PARAMS['agents'],
-                   step=1, title="Number of agents"), "agents")
+c1 = add_control(Slider(start=1, end=500, value=PARAMS['agents'],
+                        step=1, title="Number of agents"), "agents")
 
-add_control(Slider(start=1, end=30, value=PARAMS['sickness_proximity'],
-                   step=1, title="Sickness proximity"), "sickness_proximity")
+c2 = add_control(Slider(start=1, end=30, value=PARAMS['sickness_proximity'],
+                        step=1, title="Sickness proximity"), "sickness_proximity")
 
-add_control(Slider(start=1, end=300, value=PARAMS['sickness_duration'] / TICKS_PER_SECOND,
-                   step=0.5, title="Sickness duration (seconds)"), "sickness_duration")
+c3 = add_control(Slider(start=1, end=300, value=PARAMS['sickness_duration'] / TICKS_PER_SECOND,
+                        step=0.5, title="Sickness duration (seconds)"), "sickness_duration")
 
-add_control(Slider(start=1, end=300, value=PARAMS['quarantine_delay'] / TICKS_PER_SECOND,
-                   step=0.5, title="Quarantine delay (seconds)"), "quarantine_delay")
+c4 = add_control(Slider(start=1, end=300, value=PARAMS['quarantine_delay'] / TICKS_PER_SECOND,
+                        step=0.5, title="Quarantine delay (seconds)"), "quarantine_delay")
 
-add_control(Slider(start=1, end=100, value=PARAMS['distancing_factor'] * 1000,
-                   step=0.5, title="Distancing factor (percentage)"), "distancing_factor")
+c5 = add_control(Slider(start=1, end=100, value=PARAMS['distancing_factor'] * 1000,
+                        step=0.5, title="Distancing factor (percentage)"), "distancing_factor")
 
 toggle = Toggle(label="Quarantine enabled" if PARAMS['quarantining'] else "Quarantine disabled",
                 button_type="success" if PARAMS['quarantining'] else "danger", active=PARAMS['quarantining'])
@@ -169,6 +152,20 @@ toggle.js_on_click(CustomJS(code="""
     searchParams.set("quarantining", this.active ? 1 : 0);
     window.location.search = searchParams.toString();
 """))
-curdoc().add_root(toggle)
 
-update_callback = curdoc().add_periodic_callback(update, 50)
+controls = gridplot([[c1], [c2], [c3], [c4], [c5], [
+                    toggle]], toolbar_location="left", toolbar_options={'logo': None})
+
+# About us
+div = Div(text="""
+Our epidemic simulator lets you track the progression of a localised disease outbreak according to various configurable parameters.
+<br><br>
+This project was developed by <a href="https://github.com/jeremylo">Jeremy Lo Ying Ping</a> and <a href="https://github.com/shu8">Shubham Jain</a>, initially as part of the <a href="https://devpost.com/software/epidemic-simulator-wz83sm" target="_blank" rel="noopener noreferer">Hex Cambridge 2021</a> hackathon.
+<br><br>
+The code is fully open source and available on GitHub at <a href="https://github.com/jeremylo/epidemic-simulator" target="_blank" rel="noopener noreferer">https://github.com/jeremylo/epidemic-simulator</a>.
+""", style={'fontSize': '1.2em'})
+
+
+# Plot to page
+curdoc().add_root(
+    gridplot([[p1, p2], [controls, div]], toolbar_location="left", toolbar_options={'logo': None}))

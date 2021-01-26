@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-from bokeh.layouts import gridplot
+from bokeh.layouts import gridplot, column
 from bokeh.models.sources import ColumnDataSource
 from bokeh.plotting import figure, curdoc
 from bokeh.models import ColumnDataSource
@@ -14,9 +14,9 @@ TO_BE_TERMINATED = False
 DEFAULT_PARAMS = {
     'agents': 200,
     'sickness_proximity': 15,
-    'sickness_duration': 12.5,
-    'quarantine_delay': 5,
-    'distancing_factor': 0.5,
+    'sickness_duration': 250,
+    'quarantine_delay': 249,
+    'distancing_factor': 1,
     'quarantining': 0
 }
 
@@ -95,9 +95,9 @@ for key in DEFAULT_PARAMS:
         params[key] = DEFAULT_PARAMS[key]
 
 # Scale any parameters as required
-params['sickness_duration'] *= TICKS_PER_SECOND
-params['quarantine_delay'] *= TICKS_PER_SECOND
-params['distancing_factor'] /= 1000
+params['sickness_duration']
+params['quarantine_delay']
+params['distancing_factor'] /= 100
 params['quarantining'] = params['quarantining'] == 1
 
 if not params['quarantining']:
@@ -119,7 +119,7 @@ p1.axis.visible = False
 p1.xgrid.visible = False
 p1.ygrid.visible = False
 
-update_callback = curdoc().add_periodic_callback(update, 50)
+update_callback = curdoc().add_periodic_callback(update, 1000 // TICKS_PER_SECOND)
 
 # Status Graph
 names = [AgentStatus.DEAD.name, AgentStatus.IMMUNE.name,
@@ -143,14 +143,14 @@ c1 = add_control(Slider(start=1, end=500, value=params['agents'],
 c2 = add_control(Slider(start=1, end=30, value=params['sickness_proximity'],
                         step=1, title="Sickness proximity"), "sickness_proximity")
 
-c3 = add_control(Slider(start=1, end=300, value=params['sickness_duration'] / TICKS_PER_SECOND,
-                        step=0.5, title="Sickness duration (seconds)"), "sickness_duration")
+c3 = add_control(Slider(start=1, end=500, value=params['sickness_duration'],
+                        step=1, title="Sickness duration (ticks)"), "sickness_duration")
 
-c4 = add_control(Slider(start=1, end=300, value=params['quarantine_delay'] / TICKS_PER_SECOND,
-                        step=0.5, title="Quarantine delay (seconds)"), "quarantine_delay")
+c4 = add_control(Slider(start=1, end=500, value=params['quarantine_delay'],
+                        step=1, title="Quarantine delay (ticks)"), "quarantine_delay")
 
-c5 = add_control(Slider(start=1, end=100, value=params['distancing_factor'] * 1000,
-                        step=0.5, title="Distancing factor (percentage)"), "distancing_factor")
+c5 = add_control(Slider(start=0, end=100, value=params['distancing_factor'] * 100,
+                        step=0.1, title="Distancing factor (%)"), "distancing_factor")
 
 toggle = Toggle(label="Quarantine enabled" if params['quarantining'] else "Quarantine disabled",
                 button_type="success" if params['quarantining'] else "danger", active=params['quarantining'])
@@ -160,8 +160,7 @@ toggle.js_on_click(CustomJS(code="""
     window.location.search = searchParams.toString();
 """))
 
-controls = gridplot([[c1], [c2], [c3], [c4], [c5], [
-                    toggle]], toolbar_location="left", toolbar_options={'logo': None})
+controls = column(c1, c2, c3, c4, c5, toggle)
 
 # About us
 div = Div(text="""
@@ -170,7 +169,9 @@ Our epidemic simulator lets you track the progression of a localised disease out
 This project was developed by <a href="https://github.com/jeremylo">Jeremy Lo Ying Ping</a> and <a href="https://github.com/shu8">Shubham Jain</a>, initially as part of the <a href="https://devpost.com/software/epidemic-simulator-wz83sm" target="_blank" rel="noopener noreferer">Hex Cambridge 2021</a> hackathon.
 <br><br>
 The code is fully open source and available on GitHub at <a href="https://github.com/jeremylo/epidemic-simulator" target="_blank" rel="noopener noreferer">https://github.com/jeremylo/epidemic-simulator</a>.
-""", style={'fontSize': '1.2em'})
+<br><br>
+The simulator engine is currently running at {0} ticks per second.
+""".format(TICKS_PER_SECOND), style={'fontSize': '1.2em'})
 
 
 # Plot to page

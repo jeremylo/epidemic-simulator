@@ -67,7 +67,6 @@ class Agent:
                 self.quarantined = True
                 self.position = np.array([random.uniform(
                     MAX_X + 10, MAX_X + QUARANTINE_X), random.uniform(10, MAX_Y - 10)])
-
                 self.velocity = np.array([0.0, 0.0])
 
             if self.sickness_countdown == 0:
@@ -76,11 +75,10 @@ class Agent:
                     self.velocity = np.array([0.0, 0.0])
                 else:
                     self.status = AgentStatus.IMMUNE  # Wahey - we're no longer sick!
-                    self.quarantined = False
-
-                    m = min(MAX_X, MAX_Y)
-                    self.position = m * np.random.rand(2)
-                    self.velocity = 5 * np.random.rand(2)
+                    if self.quarantined:
+                        self.quarantined = False
+                        self.position = min(MAX_X, MAX_Y) * np.random.rand(2)
+                        self.velocity = 5 * np.random.rand(2)
 
     def make_sick(self):
         if self.status == AgentStatus.INFECTIOUS:

@@ -98,11 +98,13 @@ class Engine:
     def __init__(self, n: int = 200, SICKNESS_PROXIMITY: int = 10,
                  SICKNESS_DURATION: int = 250,
                  DISTANCING_FACTOR: float = 0.01,
-                 QUARANTINE_DELAY: int = 249):
+                 QUARANTINE_DELAY: int = 249,
+                 DISTANCING_RADIUS_FACTOR: float = 1.5):
         self.SICKNESS_PROXIMITY = SICKNESS_PROXIMITY
         self.SICKNESS_DURATION = SICKNESS_DURATION
         self.DISTANCING_FACTOR = DISTANCING_FACTOR
         self.QUARANTINE_DELAY = QUARANTINE_DELAY
+        self.DISTANCING_RADIUS_FACTOR = DISTANCING_RADIUS_FACTOR
 
         self.agents = self.create_agents(n)
         self.agent_count = n
@@ -125,26 +127,30 @@ class Engine:
     def tick(self):
         self.ticks += 1
 
+        positions = []
         statuses = []
         for agent in self.agents:
             agent.update()
+            positions.append(agent.position)
             statuses.append(agent.status.name)
 
         self.stats = dict(Counter(statuses))
-
         if self.stats.get(AgentStatus.INFECTIOUS.name, 0) <= 0:
             return
 
-        positions = np.array([agent.position for agent in self.agents])
+        positions = np.array(positions)
         differences = positions.reshape(-1, 1, 2) - positions
         norms = np.linalg.norm(differences, axis=2)
         for i in range(self.agent_count):
             for j in range(i + 1, self.agent_count):
-                if norms[i, j] < 1.5 * self.SICKNESS_PROXIMITY:
-                    self.agents[i].velocity -= self.DISTANCING_FACTOR * \
-                        differences[i, j]
-                    self.agents[j].velocity += self.DISTANCING_FACTOR * \
-                        differences[i, j]
+                if norms[i, j] < self.DISTANCING_RADIUS_FACTOR * self.SICKNESS_PROXIMITY:
+                    acceleration = self.DISTANCING_FACTOR * differences[i, j] / \
+                        np.dot(differences[i, j], differences[i, j])
 
-                    if self.agents[i].status == AgentStatus.SUSCEPTIBLE and self.agents[j].status == AgentStatus.INFECTIOUS and norms[i, j] < self.SICKNESS_PROXIMITY:
+                    self.agents[i].velocity -= acceleration
+                    self.agents[j].velocity += acceleration
+
+                    if self.agents[i].status == AgentStatus.SUSCEPTIBLE \
+                            and self.agents[j].status == AgentStatus.INFECTIOUS \
+                            and norms[i, j] < self.SICKNESS_PROXIMITY:
                         self.agents[i].make_sick()

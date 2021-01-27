@@ -17,7 +17,8 @@ DEFAULT_PARAMS = {
     'sickness_duration': 250,
     'quarantine_delay': 249,
     'distancing_factor': 1,
-    'quarantining': 0
+    'quarantining': 0,
+    'initial_immunity': 0
 }
 
 
@@ -99,13 +100,14 @@ params['sickness_duration']
 params['quarantine_delay']
 params['distancing_factor'] /= 100
 params['quarantining'] = params['quarantining'] == 1
+params['initial_immunity'] /= 100
 
 if not params['quarantining']:
     params['quarantine_delay'] = params['sickness_duration'] + 1
 
 # Create engine
 engine = Engine(n=int(params['agents']), SICKNESS_PROXIMITY=int(params['sickness_proximity']), SICKNESS_DURATION=int(
-    params['sickness_duration']), DISTANCING_FACTOR=params['distancing_factor'], QUARANTINE_DELAY=int(params['quarantine_delay']))
+    params['sickness_duration']), DISTANCING_FACTOR=params['distancing_factor'], QUARANTINE_DELAY=int(params['quarantine_delay']), INITIAL_IMMUNITY=params['initial_immunity'])
 
 data = {}
 data['x'], data['y'], data['color'] = summarise(engine.agents)
@@ -152,6 +154,9 @@ c4 = add_control(Slider(start=1, end=500, value=params['quarantine_delay'],
 c5 = add_control(Slider(start=0, end=100, value=params['distancing_factor'] * 100,
                         step=0.1, title="Distancing factor (%)"), "distancing_factor")
 
+c6 = add_control(Slider(start=0, end=100, value=params['initial_immunity'] * 100,
+                        step=1, title="Initial immunity (%)"), "initial_immunity")
+
 toggle = Toggle(label="Quarantine enabled" if params['quarantining'] else "Quarantine disabled",
                 button_type="success" if params['quarantining'] else "danger", active=params['quarantining'])
 toggle.js_on_click(CustomJS(code="""
@@ -160,7 +165,7 @@ toggle.js_on_click(CustomJS(code="""
     window.location.search = searchParams.toString();
 """))
 
-controls = column(c1, c2, c3, c4, c5, toggle)
+controls = column(c1, c2, c3, c4, c5, c6, toggle)
 
 # About us
 div = Div(text="""

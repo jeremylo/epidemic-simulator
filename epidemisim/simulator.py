@@ -98,14 +98,15 @@ class Engine:
                  SICKNESS_DURATION: int = 250,
                  DISTANCING_FACTOR: float = 0.01,
                  QUARANTINE_DELAY: int = 249,
-                 DISTANCING_RADIUS_FACTOR: float = 1.5):
+                 DISTANCING_RADIUS_FACTOR: float = 1.5,
+                 INITIAL_IMMUNITY: float = 0.0):
         self.SICKNESS_PROXIMITY = SICKNESS_PROXIMITY
         self.SICKNESS_DURATION = SICKNESS_DURATION
         self.DISTANCING_FACTOR = DISTANCING_FACTOR
         self.QUARANTINE_DELAY = QUARANTINE_DELAY
         self.DISTANCING_RADIUS_FACTOR = DISTANCING_RADIUS_FACTOR
 
-        self.agents = self.create_agents(n)
+        self.agents = self.create_agents(n, INITIAL_IMMUNITY)
         self.agent_count = n
         self.stats = {
             AgentStatus.DEAD.name: 0,
@@ -115,13 +116,16 @@ class Engine:
         }
         self.ticks = 0
 
-    def create_agents(self, n):
+    def create_agents(self, n, immunity):
         m = min(MAX_X, MAX_Y)
-        sick_agent = Agent(m * np.random.rand(2), 5 * np.random.rand(2),
-                           self.SICKNESS_DURATION, self.QUARANTINE_DELAY)
-        sick_agent.make_sick()
-        return [Agent(m * np.random.rand(2), 5 * np.random.rand(2), self.SICKNESS_DURATION, self.QUARANTINE_DELAY)
-                for i in range(n - 1)] + [sick_agent]
+        agents = [Agent(m * np.random.rand(2), 5 * np.random.rand(2), self.SICKNESS_DURATION, self.QUARANTINE_DELAY)
+                  for _ in range(n)]
+
+        agents[-1].make_sick()
+        for i in range(int(n * immunity)):
+            agents[i].status = AgentStatus.IMMUNE
+
+        return agents
 
     def tick(self):
         self.ticks += 1

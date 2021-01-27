@@ -38,8 +38,7 @@ class Controller:
         self.status_source = ColumnDataSource(pd.DataFrame(
             np.zeros((1, len(self.names))), columns=self.names))
 
-        self.update_callback = curdoc().add_periodic_callback(
-            self.update, 1000 // TICKS_PER_SECOND)
+        self.start()
 
     def summarise(self, agents):
         xs, ys, colors = [], [], []
@@ -63,6 +62,10 @@ class Controller:
             ],
             [get_controls(params), get_about_us()]
         ], toolbar_location="left", toolbar_options={'logo': None}))
+
+    def start(self) -> None:
+        self.update_callback = curdoc().add_periodic_callback(
+            self.update, 1000 // TICKS_PER_SECOND)
 
     def update(self) -> None:
         self.engine.tick()
@@ -92,6 +95,19 @@ class Controller:
 
         self.terminating = True
         curdoc().remove_periodic_callback(self.update_callback)
+
+    def reset(self) -> None:
+        self.terminate()
+        self.status_source.data = {
+            "index": [],
+            AgentStatus.DEAD.name: [],
+            AgentStatus.IMMUNE.name: [],
+            AgentStatus.INFECTIOUS.name: [],
+            AgentStatus.SUSCEPTIBLE.name: [],
+        }
+        self.engine = self.make_engine(self.params)
+        self.terminating = False
+        self.start()
 
 
 def get_parameters():  # Get query parameters

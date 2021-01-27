@@ -1,6 +1,49 @@
-from .simulator import TICKS_PER_SECOND
+from .simulator import AgentStatus, MAX_X, MAX_Y, QUARANTINE_X, TICKS_PER_SECOND
+from bokeh.colors import RGB
 from bokeh.layouts import column
-from bokeh.models import Slider, Toggle, Div, CustomJS
+from bokeh.models import DataRange1d, Slider, Toggle, Div, CustomJS
+from bokeh.plotting import figure
+
+
+def get_color(agent):
+    if agent.status == AgentStatus.DEAD:
+        return RGB(113, 128, 147).lighten(agent.frailty).to_css()  # 718093
+    elif agent.status == AgentStatus.IMMUNE:
+        return RGB(68, 189, 50).lighten(agent.frailty).to_css()  # 44bd32
+    elif agent.status == AgentStatus.INFECTIOUS:
+        return RGB(232, 65, 24).lighten(agent.frailty).to_css()  # e84118
+    elif agent.status == AgentStatus.SUSCEPTIBLE:
+        return RGB(0, 168, 255).lighten(agent.frailty).to_css()  # 00a8ff
+
+########################################
+# IMPORTANT GRAPHS                     #
+########################################
+
+
+def get_visualisation(visualisation_source):
+    p = figure(title="Epidemic Simulation", x_axis_label='x',
+               y_axis_label='y', x_range=(0, MAX_X + QUARANTINE_X), y_range=(0, MAX_Y), tools="")
+    p.scatter(x='x', y='y', color='color',
+              line_width=2, source=visualisation_source)
+    p.line([MAX_X + 5, MAX_X + 5], [0, MAX_Y], line_width=2, color='#eeeeee')
+    p.axis.visible = False
+    p.xgrid.visible = False
+    p.ygrid.visible = False
+
+    return p
+
+
+def get_population_health_graph(names, status_source, agent_count: int):
+    p = figure(title="Population Health",
+               x_range=DataRange1d(start=0, bounds=(0, None)),
+               y_range=(0, agent_count), tools="")
+    p.grid.minor_grid_line_color = '#eeeeee'
+    p.varea_stack(stackers=names, x='index',
+                  color=('#718093', '#44bd32', '#e84118', '#00a8ff'), legend_label=names, source=status_source)
+    p.legend.items.reverse()
+    p.legend.click_policy = "hide"
+
+    return p
 
 
 ##################

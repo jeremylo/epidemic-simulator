@@ -9,16 +9,19 @@ from bokeh.colors import RGB
 from bokeh.models import DataRange1d, Slider, Toggle, Div, CustomJS
 
 from .simulator import Engine, AgentStatus, MAX_X, MAX_Y, QUARANTINE_X, TICKS_PER_SECOND
+from .visualiser import get_about_us, get_controls
 
-TO_BE_TERMINATED = False
-DEFAULT_PARAMS = {
-    'agents': 200,
-    'sickness_proximity': 15,
-    'sickness_duration': 250,
-    'quarantine_delay': 249,
-    'distancing_factor': 1,
-    'quarantining': 0,
-    'initial_immunity': 0
+TERMINATING = False
+DEFAULT_PARAMETERS = {  # MINIMUM, DEFAULT, MAXIMUM
+    'agents': (1, 200, 500),
+    'initial_immunity': (0, 0, 100),
+
+    'sickness_proximity': (1, 15, 30),
+    'sickness_duration': (1, 250, 500),
+
+    'quarantine_delay': (0, 249, 501),
+    'distancing_factor': (0, 1, 100),
+    'quarantining': (0, 0, 1)
 }
 
 
@@ -34,9 +37,7 @@ def get_color(agent):
 
 
 def summarise(agents):
-    xs = []
-    ys = []
-    colors = []
+    xs, ys, colors = [], [], []
     for agent in agents:
         xs.append(agent.position[0])
         ys.append(agent.position[1])
@@ -45,11 +46,11 @@ def summarise(agents):
 
 
 def terminate():
-    global TO_BE_TERMINATED
-    if TO_BE_TERMINATED:
+    global TERMINATING
+    if TERMINATING:
         return
 
-    TO_BE_TERMINATED = True
+    TERMINATING = True
     curdoc().remove_periodic_callback(update_callback)
 
 
@@ -57,12 +58,11 @@ def update():
     engine.tick()
 
     s = slice(engine.agent_count)
-    data['x'], data['y'], data['color'] = summarise(engine.agents)
-
+    x, y, color = summarise(engine.agents)
     source.patch({
-        'x': [(s, data['x'])],
-        'y': [(s, data['y'])],
-        'color': [(s, data['color'])]
+        'x': [(s, x)],
+        'y': [(s, y)],
+        'color': [(s, color)]
     })
 
     status_source.stream({
@@ -73,41 +73,41 @@ def update():
         AgentStatus.SUSCEPTIBLE.name: [engine.stats.get(AgentStatus.SUSCEPTIBLE.name, 0)],
     })
 
-    if engine.stats.get(AgentStatus.INFECTIOUS.name, 0) == 0 and not TO_BE_TERMINATED:
+    if engine.stats.get(AgentStatus.INFECTIOUS.name, 0) == 0 and not TERMINATING:
         curdoc().add_timeout_callback(terminate, 8000)
 
 
-def add_control(control, query_param):
-    control.js_on_change('value', CustomJS(code="""
-    const searchParams = new URLSearchParams(window.location.search);
-    searchParams.set("{query_param}", cb_obj.value);
-    window.location.search = searchParams.toString();
-    """.format(query_param=query_param)))
-    return control
+def get_parameters():  # Get query parameters
+    def cajole(value, minimum, maximum):
+        return min(max(value, minimum), maximum)
+
+    params = {}
+    for key in DEFAULT_PARAMETERS:
+        try:
+            params[key] = cajole(float(
+                curdoc().session_context.request.arguments.get(key)[0]),
+                DEFAULT_PARAMETERS[key][0], DEFAULT_PARAMETERS[key][2])
+        except:
+            params[key] = DEFAULT_PARAMETERS[key][1]
+
+    params['quarantining'] = params['quarantining'] == 1
+    params['distancing_factor'] /= 100
+    params['initial_immunity'] /= 100
+
+    if not params['quarantining']:
+        params['quarantine_delay'] = params['sickness_duration'] + 1
+
+    return params
 
 
-# Get query parameters/set default parameters
-params = {}
-for key in DEFAULT_PARAMS:
-    try:
-        params[key] = float(
-            curdoc().session_context.request.arguments.get(key)[0])
-    except:
-        params[key] = DEFAULT_PARAMS[key]
+def make_engine(params):
+    return Engine(n=int(params['agents']), SICKNESS_PROXIMITY=int(params['sickness_proximity']), SICKNESS_DURATION=int(
+        params['sickness_duration']), DISTANCING_FACTOR=params['distancing_factor'], QUARANTINE_DELAY=int(params['quarantine_delay']), INITIAL_IMMUNITY=params['initial_immunity'])
 
-# Scale any parameters as required
-params['sickness_duration']
-params['quarantine_delay']
-params['distancing_factor'] /= 100
-params['quarantining'] = params['quarantining'] == 1
-params['initial_immunity'] /= 100
-
-if not params['quarantining']:
-    params['quarantine_delay'] = params['sickness_duration'] + 1
 
 # Create engine
-engine = Engine(n=int(params['agents']), SICKNESS_PROXIMITY=int(params['sickness_proximity']), SICKNESS_DURATION=int(
-    params['sickness_duration']), DISTANCING_FACTOR=params['distancing_factor'], QUARANTINE_DELAY=int(params['quarantine_delay']), INITIAL_IMMUNITY=params['initial_immunity'])
+params = get_parameters()
+engine = make_engine(params)
 
 data = {}
 data['x'], data['y'], data['color'] = summarise(engine.agents)
@@ -124,61 +124,31 @@ p1.ygrid.visible = False
 update_callback = curdoc().add_periodic_callback(update, 1000 // TICKS_PER_SECOND)
 
 # Status Graph
-names = [AgentStatus.DEAD.name, AgentStatus.IMMUNE.name,
-         AgentStatus.INFECTIOUS.name, AgentStatus.SUSCEPTIBLE.name]
+names = [status.name for status in AgentStatus][::-1]
+status_source = ColumnDataSource(pd.DataFrame(
+    np.zeros((1, len(names))), columns=names))
 
-status_source = ColumnDataSource(pd.DataFrame(np.zeros((1, 4)), columns=names))
 
-p2 = figure(title="Population Health",
-            x_range=DataRange1d(start=0, bounds=(0, None)),
-            y_range=(0, params['agents']), tools="")
-p2.grid.minor_grid_line_color = '#eeeeee'
-p2.varea_stack(stackers=names, x='index',
-               color=('#718093', '#44bd32', '#e84118', '#00a8ff'), legend_label=names, source=status_source)
-p2.legend.items.reverse()
-p2.legend.click_policy = "hide"
+def get_population_health_graph(names, params):
+    p = figure(title="Population Health",
+               x_range=DataRange1d(start=0, bounds=(0, None)),
+               y_range=(0, params['agents']), tools="")
+    p.grid.minor_grid_line_color = '#eeeeee'
+    p.varea_stack(stackers=names, x='index',
+                  color=('#718093', '#44bd32', '#e84118', '#00a8ff'), legend_label=names, source=status_source)
+    p.legend.items.reverse()
+    p.legend.click_policy = "hide"
 
-# Add controls
-c1 = add_control(Slider(start=1, end=500, value=params['agents'],
-                        step=1, title="Number of agents"), "agents")
+    return p
 
-c2 = add_control(Slider(start=1, end=30, value=params['sickness_proximity'],
-                        step=1, title="Sickness proximity"), "sickness_proximity")
 
-c3 = add_control(Slider(start=1, end=500, value=params['sickness_duration'],
-                        step=1, title="Sickness duration (ticks)"), "sickness_duration")
-
-c4 = add_control(Slider(start=1, end=500, value=params['quarantine_delay'],
-                        step=1, title="Quarantine delay (ticks)"), "quarantine_delay")
-
-c5 = add_control(Slider(start=0, end=100, value=params['distancing_factor'] * 100,
-                        step=0.1, title="Distancing factor (%)"), "distancing_factor")
-
-c6 = add_control(Slider(start=0, end=100, value=params['initial_immunity'] * 100,
-                        step=1, title="Initial immunity (%)"), "initial_immunity")
-
-toggle = Toggle(label="Quarantine enabled" if params['quarantining'] else "Quarantine disabled",
-                button_type="success" if params['quarantining'] else "danger", active=params['quarantining'])
-toggle.js_on_click(CustomJS(code="""
-    const searchParams = new URLSearchParams(window.location.search);
-    searchParams.set("quarantining", this.active ? 1 : 0);
-    window.location.search = searchParams.toString();
-"""))
-
-controls = column(c1, c2, c3, c4, c5, c6, toggle)
+p2 = get_population_health_graph(names, params)
+controls = get_controls(params)
 
 # About us
-div = Div(text="""
-Our epidemic simulator lets you track the progression of a localised disease outbreak according to various configurable parameters.
-<br><br>
-This project was developed by <a href="https://github.com/jeremylo">Jeremy Lo Ying Ping</a> and <a href="https://github.com/shu8">Shubham Jain</a>, initially as part of the <a href="https://devpost.com/software/epidemic-simulator-wz83sm" target="_blank" rel="noopener noreferer">Hex Cambridge 2021</a> hackathon.
-<br><br>
-The code is fully open source and available on GitHub at <a href="https://github.com/jeremylo/epidemic-simulator" target="_blank" rel="noopener noreferer">https://github.com/jeremylo/epidemic-simulator</a>.
-<br><br>
-The simulator engine is currently running at {0} ticks per second.
-""".format(TICKS_PER_SECOND), style={'fontSize': '1.2em'})
+about_us = get_about_us()
 
 
 # Plot to page
 curdoc().add_root(
-    gridplot([[p1, p2], [controls, div]], toolbar_location="left", toolbar_options={'logo': None}))
+    gridplot([[p1, p2], [controls, about_us]], toolbar_location="left", toolbar_options={'logo': None}))

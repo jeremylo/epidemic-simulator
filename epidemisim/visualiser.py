@@ -1,4 +1,4 @@
-from .simulator import MAX_X, MAX_Y, QUARANTINE_X, TICKS_PER_SECOND
+from .simulator import MAX_X, MAX_Y, QUARANTINE_X, TICKS_PER_SECOND, PARAMETERS
 from bokeh.layouts import column
 from bokeh.models import DataRange1d, Slider, Toggle, Div
 from bokeh.plotting import figure
@@ -53,9 +53,9 @@ def wrap(control: Slider, controller, key: str):
 def get_simulation_controls(controller):
     return [
         Div(text="""<strong>Simulation Controls</strong>"""),
-        wrap(Slider(start=1, end=500, value=controller.params['agents'],
+        wrap(Slider(start=PARAMETERS['agents'][0], end=PARAMETERS['agents'][2], value=controller.params['agents'],
                     step=1, title="Number of agents"), controller, 'agents'),
-        wrap(Slider(start=0, end=100, value=controller.params['initial_immunity'] * 100,
+        wrap(Slider(start=PARAMETERS['initial_immunity'][0], end=PARAMETERS['initial_immunity'][2], value=controller.params['initial_immunity'] * 100,
                     step=1, title="Initial immunity (%)"), controller, 'initial_immunity')
     ]
 
@@ -63,9 +63,9 @@ def get_simulation_controls(controller):
 def get_disease_controls(controller):
     return [
         Div(text="""<strong>Disease Profile Controls</strong>"""),
-        wrap(Slider(start=1, end=30, value=controller.params['sickness_proximity'],
+        wrap(Slider(start=PARAMETERS['sickness_proximity'][0], end=PARAMETERS['sickness_proximity'][2], value=controller.params['sickness_proximity'],
                     step=1, title="Sickness proximity"), controller, "sickness_proximity"),
-        wrap(Slider(start=1, end=500, value=controller.params['sickness_duration'],
+        wrap(Slider(start=PARAMETERS['sickness_duration'][0], end=PARAMETERS['sickness_duration'][2], value=controller.params['sickness_duration'],
                     step=1, title="Sickness duration (ticks)"), controller, "sickness_duration")
     ]
 
@@ -92,10 +92,10 @@ def get_response_controls(controller):
 
     return [
         Div(text="""<strong>Disease Response Controls</strong>"""),
-        wrap(Slider(start=1, end=500, value=controller.params['quarantine_delay'],
+        wrap(Slider(start=PARAMETERS['quarantine_delay'][0], end=PARAMETERS['quarantine_delay'][2], value=controller.params['quarantine_delay'],
                     step=1, title="Quarantine delay (ticks)"), controller, "quarantine_delay"),
-        wrap(Slider(start=0, end=100, value=controller.params['distancing_factor'] * 100,
-                    step=0.1, title="Distancing factor (%)"), controller, "distancing_factor"),
+        wrap(Slider(start=PARAMETERS['distancing_factor'][0], end=PARAMETERS['distancing_factor'][2], value=controller.params['distancing_factor'] * 100,
+                    step=0.5, title="Distancing factor (%)"), controller, "distancing_factor"),
         toggle
     ]
 

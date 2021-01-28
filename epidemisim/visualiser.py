@@ -1,20 +1,8 @@
-from .simulator import AgentStatus, MAX_X, MAX_Y, QUARANTINE_X, TICKS_PER_SECOND, PARAMETERS
-from bokeh.colors import RGB
-from bokeh.events import ButtonClick
+from .simulator import MAX_X, MAX_Y, QUARANTINE_X, TICKS_PER_SECOND
 from bokeh.layouts import column
-from bokeh.models import DataRange1d, Slider, Toggle, Div, CustomJS
+from bokeh.models import DataRange1d, Slider, Toggle, Div
 from bokeh.plotting import figure
 
-
-def get_color(agent):
-    if agent.status == AgentStatus.DEAD:
-        return RGB(113, 128, 147).lighten(agent.frailty).to_css()  # 718093
-    elif agent.status == AgentStatus.IMMUNE:
-        return RGB(68, 189, 50).lighten(agent.frailty).to_css()  # 44bd32
-    elif agent.status == AgentStatus.INFECTIOUS:
-        return RGB(232, 65, 24).lighten(agent.frailty).to_css()  # e84118
-    elif agent.status == AgentStatus.SUSCEPTIBLE:
-        return RGB(0, 168, 255).lighten(agent.frailty).to_css()  # 00a8ff
 
 ########################################
 # IMPORTANT GRAPHS                     #
@@ -50,6 +38,8 @@ def get_population_health_graph(names, status_source, agent_count: int):
 ##################
 # CONTROLS       #
 ##################
+
+
 def wrap(control: Slider, controller, key: str):
     def update_controller(attr, old, new):
         controller.update_parameter(key, new)

@@ -7,11 +7,8 @@ from bokeh.plotting import curdoc
 from bokeh.models import ColumnDataSource
 
 from .simulator import Engine, AgentStatus, TICKS_PER_SECOND, PARAMETERS
-from .visualiser import get_about_us, get_controls, get_color, get_population_health_graph, get_visualisation
-
-
-def cajole(value, minimum, maximum):
-    return min(max(value, minimum), maximum)
+from .util import cajole, trisect, get_color
+from .visualiser import get_about_us, get_controls, get_population_health_graph, get_visualisation
 
 
 class Controller:
@@ -30,7 +27,7 @@ class Controller:
         self.engine = self.make_engine()
 
         data = {}
-        data['x'], data['y'], data['color'] = self.summarise(
+        data['x'], data['y'], data['color'] = trisect(
             self.engine.agents)
         self.visualisation_source = ColumnDataSource(data)
 
@@ -59,14 +56,6 @@ class Controller:
         if not self.params['quarantining']:
             self.params['quarantine_delay'] = self.params['sickness_duration'] + 1
 
-    def summarise(self, agents):
-        xs, ys, colors = [], [], []
-        for agent in agents:
-            xs.append(agent.position[0])
-            ys.append(agent.position[1])
-            colors.append(get_color(agent))
-        return xs, ys, colors
-
     def make_engine(self) -> Engine:
         return Engine(n=int(self.params['agents']), SICKNESS_PROXIMITY=int(self.params['sickness_proximity']),
                       SICKNESS_DURATION=int(self.params['sickness_duration']), DISTANCING_FACTOR=self.params['distancing_factor'],
@@ -90,7 +79,7 @@ class Controller:
         self.engine.tick()
 
         s = slice(self.engine.agent_count)
-        x, y, color = self.summarise(self.engine.agents)
+        x, y, color = trisect(self.engine.agents)
         self.visualisation_source.patch({
             'x': [(s, x)],
             'y': [(s, y)],
@@ -125,7 +114,7 @@ class Controller:
         self.engine = self.make_engine()
 
         data = {}
-        data['x'], data['y'], data['color'] = self.summarise(
+        data['x'], data['y'], data['color'] = trisect(
             self.engine.agents)
         self.visualisation_source.data = data
 

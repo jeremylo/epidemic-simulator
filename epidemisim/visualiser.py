@@ -1,5 +1,6 @@
-from .simulator import AgentStatus, MAX_X, MAX_Y, QUARANTINE_X, TICKS_PER_SECOND
+from .simulator import AgentStatus, MAX_X, MAX_Y, QUARANTINE_X, TICKS_PER_SECOND, PARAMETERS
 from bokeh.colors import RGB
+from bokeh.events import ButtonClick
 from bokeh.layouts import column
 from bokeh.models import DataRange1d, Slider, Toggle, Div, CustomJS
 from bokeh.plotting import figure
@@ -36,7 +37,7 @@ def get_visualisation(visualisation_source):
 def get_population_health_graph(names, status_source, agent_count: int):
     p = figure(title="Population Health",
                x_range=DataRange1d(start=0, bounds=(0, None)),
-               y_range=(0, agent_count), tools="")
+               y_range=DataRange1d(start=0, bounds=(0, None)), tools="")
     p.grid.minor_grid_line_color = '#eeeeee'
     p.varea_stack(stackers=names, x='index',
                   color=('#718093', '#44bd32', '#e84118', '#00a8ff'), legend_label=names, source=status_source)
@@ -49,58 +50,69 @@ def get_population_health_graph(names, status_source, agent_count: int):
 ##################
 # CONTROLS       #
 ##################
+def wrap(control: Slider, controller, key: str):
+    def update_controller(attr, old, new):
+        controller.update_parameter(key, new)
+        controller.reset()
 
+    control.on_change('value_throttled', update_controller)
 
-def add_control(control, query_param):
-    control.js_on_change('value', CustomJS(code="""
-    const searchParams = new URLSearchParams(window.location.search);
-    searchParams.set("{query_param}", cb_obj.value);
-    window.location.search = searchParams.toString();
-    """.format(query_param=query_param)))
     return control
 
 
-def get_simulation_controls(params):
+def get_simulation_controls(controller):
     return [
         Div(text="""<strong>Simulation Controls</strong>"""),
-        add_control(Slider(start=1, end=500, value=params['agents'],
-                           step=1, title="Number of agents"), "agents"),
-        add_control(Slider(start=0, end=100, value=params['initial_immunity'] * 100,
-                           step=1, title="Initial immunity (%)"), "initial_immunity")
+        wrap(Slider(start=1, end=500, value=controller.params['agents'],
+                    step=1, title="Number of agents"), controller, 'agents'),
+        wrap(Slider(start=0, end=100, value=controller.params['initial_immunity'] * 100,
+                    step=1, title="Initial immunity (%)"), controller, 'initial_immunity')
     ]
 
 
-def get_disease_controls(params):
+def get_disease_controls(controller):
     return [
         Div(text="""<strong>Disease Profile Controls</strong>"""),
-        add_control(Slider(start=1, end=30, value=params['sickness_proximity'],
-                           step=1, title="Sickness proximity"), "sickness_proximity"),
-        add_control(Slider(start=1, end=500, value=params['sickness_duration'],
-                           step=1, title="Sickness duration (ticks)"), "sickness_duration")
+        wrap(Slider(start=1, end=30, value=controller.params['sickness_proximity'],
+                    step=1, title="Sickness proximity"), controller, "sickness_proximity"),
+        wrap(Slider(start=1, end=500, value=controller.params['sickness_duration'],
+                    step=1, title="Sickness duration (ticks)"), controller, "sickness_duration")
     ]
 
 
-def get_response_controls(params):
-    toggle = Toggle(label="Quarantine enabled" if params['quarantining'] else "Quarantine disabled",
-                    button_type="success" if params['quarantining'] else "danger", active=params['quarantining'])
-    toggle.js_on_click(CustomJS(code="""
-    const searchParams = new URLSearchParams(window.location.search);
-    searchParams.set("quarantining", this.active ? 1 : 0);
-    window.location.search = searchParams.toString();
-"""))
+def get_response_controls(controller):
+
+    toggle = Toggle(label="Quarantine enabled" if controller.params['quarantining'] else "Quarantine disabled",
+                    button_type="success" if controller.params['quarantining'] else "danger", active=controller.params['quarantining'])
+
+    def toggle_callback(event):
+        controller.update_parameter(
+            'quarantining', not controller.params['quarantining'])
+
+        if controller.params['quarantining']:
+            toggle.label = "Quarantine enabled"
+            toggle.button_type = "success"
+        else:
+            toggle.label = "Quarantine disabled"
+            toggle.button_type = "danger"
+
+        controller.reset()
+
+    toggle.on_click(toggle_callback)
+
     return [
         Div(text="""<strong>Disease Response Controls</strong>"""),
-        add_control(Slider(start=1, end=500, value=params['quarantine_delay'],
-                           step=1, title="Quarantine delay (ticks)"), "quarantine_delay"),
-        add_control(Slider(start=0, end=100, value=params['distancing_factor'] * 100,
-                           step=0.1, title="Distancing factor (%)"), "distancing_factor"),
+        wrap(Slider(start=1, end=500, value=controller.params['quarantine_delay'],
+                    step=1, title="Quarantine delay (ticks)"), controller, "quarantine_delay"),
+        wrap(Slider(start=0, end=100, value=controller.params['distancing_factor'] * 100,
+                    step=0.1, title="Distancing factor (%)"), controller, "distancing_factor"),
         toggle
     ]
 
 
-def get_controls(params):
-    return column(*get_simulation_controls(params), *
-                  get_disease_controls(params), *get_response_controls(params))
+def get_controls(controller):
+    return column(*get_simulation_controls(controller), *
+                  get_disease_controls(controller), *get_response_controls(controller))
 
 ###############
 # ABOUT US    #

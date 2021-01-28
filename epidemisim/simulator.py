@@ -9,6 +9,18 @@ MAX_X = 1000
 MAX_Y = 1000
 QUARANTINE_X = 200
 
+PARAMETERS = {  # MINIMUM, DEFAULT, MAXIMUM
+    'agents': (1, 200, 500),
+    'initial_immunity': (0, 0, 100),
+
+    'sickness_proximity': (1, 15, 30),
+    'sickness_duration': (1, 250, 500),
+
+    'quarantine_delay': (0, 249, 501),
+    'distancing_factor': (0, 1, 100),
+    'quarantining': (0, 0, 1)
+}
+
 
 class AgentStatus(enum.Enum):
     SUSCEPTIBLE = 1

@@ -6,28 +6,28 @@ from bokeh.models.sources import ColumnDataSource
 from bokeh.plotting import curdoc
 from bokeh.models import ColumnDataSource
 
-from .simulator import Engine, AgentStatus, TICKS_PER_SECOND
+from .simulator import Engine, AgentStatus, TICKS_PER_SECOND, PARAMETERS
 from .visualiser import get_about_us, get_controls, get_color, get_population_health_graph, get_visualisation
 
-PARAMETERS = {  # MINIMUM, DEFAULT, MAXIMUM
-    'agents': (1, 200, 500),
-    'initial_immunity': (0, 0, 100),
 
-    'sickness_proximity': (1, 15, 30),
-    'sickness_duration': (1, 250, 500),
-
-    'quarantine_delay': (0, 249, 501),
-    'distancing_factor': (0, 1, 100),
-    'quarantining': (0, 0, 1)
-}
+def cajole(value, minimum, maximum):
+    return min(max(value, minimum), maximum)
 
 
 class Controller:
+    params = {}
     terminating = False
 
-    def __init__(self, params) -> None:
-        self.params = params
-        self.engine = self.make_engine(params)
+    def __init__(self, params={}) -> None:
+        self.params = {param: PARAMETERS[param][1] for param in PARAMETERS}
+        self.params['quarantining'] = self.params['quarantining'] == 1
+        self.params['distancing_factor'] /= 100
+        self.params['initial_immunity'] /= 100
+
+        for param in params:
+            self.update_parameter(param, params[param])
+
+        self.engine = self.make_engine()
 
         data = {}
         data['x'], data['y'], data['color'] = self.summarise(
@@ -40,6 +40,25 @@ class Controller:
 
         self.start()
 
+    def update_parameter(self, key, value):
+        try:
+            self.params[key] = cajole(
+                float(value), PARAMETERS[key][0], PARAMETERS[key][2])
+        except:
+            self.params[key] = PARAMETERS[key][1]
+
+        if key in ('agents', 'sickness_proximity', 'sickness_duration', 'quarantine_delay'):
+            self.params[key] == int(self.params[key])
+        elif key == 'initial_immunity':
+            self.params[key] /= 100
+        elif key == 'distancing_factor':
+            self.params['distancing_factor'] /= 100
+        elif key == 'quarantining':
+            self.params['quarantining'] = self.params['quarantining'] == 1
+
+        if not self.params['quarantining']:
+            self.params['quarantine_delay'] = self.params['sickness_duration'] + 1
+
     def summarise(self, agents):
         xs, ys, colors = [], [], []
         for agent in agents:
@@ -48,19 +67,19 @@ class Controller:
             colors.append(get_color(agent))
         return xs, ys, colors
 
-    def make_engine(self, params) -> Engine:
-        return Engine(n=int(params['agents']), SICKNESS_PROXIMITY=int(params['sickness_proximity']),
-                      SICKNESS_DURATION=int(params['sickness_duration']), DISTANCING_FACTOR=params['distancing_factor'],
-                      QUARANTINE_DELAY=int(params['quarantine_delay']), INITIAL_IMMUNITY=params['initial_immunity'])
+    def make_engine(self) -> Engine:
+        return Engine(n=int(self.params['agents']), SICKNESS_PROXIMITY=int(self.params['sickness_proximity']),
+                      SICKNESS_DURATION=int(self.params['sickness_duration']), DISTANCING_FACTOR=self.params['distancing_factor'],
+                      QUARANTINE_DELAY=int(self.params['quarantine_delay']), INITIAL_IMMUNITY=self.params['initial_immunity'])
 
     def show(self) -> None:
+        self.visualisation = get_visualisation(self.visualisation_source)
+        self.population_health_graph = get_population_health_graph(
+            self.names, self.status_source, self.params['agents'])
+
         curdoc().add_root(gridplot([
-            [
-                get_visualisation(self.visualisation_source),
-                get_population_health_graph(
-                    self.names, self.status_source, params['agents'])
-            ],
-            [get_controls(params), get_about_us()]
+            [self.visualisation, self.population_health_graph],
+            [get_controls(self), get_about_us()]
         ], toolbar_location="left", toolbar_options={'logo': None}))
 
     def start(self) -> None:
@@ -94,10 +113,22 @@ class Controller:
             return
 
         self.terminating = True
-        curdoc().remove_periodic_callback(self.update_callback)
+
+        try:
+            curdoc().remove_periodic_callback(self.update_callback)
+        except ValueError:
+            pass
 
     def reset(self) -> None:
         self.terminate()
+
+        self.engine = self.make_engine()
+
+        data = {}
+        data['x'], data['y'], data['color'] = self.summarise(
+            self.engine.agents)
+        self.visualisation_source.data = data
+
         self.status_source.data = {
             "index": [],
             AgentStatus.DEAD.name: [],
@@ -105,35 +136,12 @@ class Controller:
             AgentStatus.INFECTIOUS.name: [],
             AgentStatus.SUSCEPTIBLE.name: [],
         }
-        self.engine = self.make_engine(self.params)
+
         self.terminating = False
-        self.start()
+
+        curdoc().add_next_tick_callback(self.start)
 
 
-def get_parameters():  # Get query parameters
-    def cajole(value, minimum, maximum):
-        return min(max(value, minimum), maximum)
-
-    params = {}
-    for key in PARAMETERS:
-        try:
-            params[key] = cajole(float(
-                curdoc().session_context.request.arguments.get(key)[0]),
-                PARAMETERS[key][0], PARAMETERS[key][2])
-        except:
-            params[key] = PARAMETERS[key][1]
-
-    params['quarantining'] = params['quarantining'] == 1
-    params['distancing_factor'] /= 100
-    params['initial_immunity'] /= 100
-
-    if not params['quarantining']:
-        params['quarantine_delay'] = params['sickness_duration'] + 1
-
-    return params
-
-
-# Create engine
-params = get_parameters()
-controller = Controller(params)
+# Run
+controller = Controller()
 controller.show()

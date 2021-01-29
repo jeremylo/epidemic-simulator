@@ -99,11 +99,12 @@ class Controls:
             controller.update_parameter(
                 'quarantining', not controller.params['quarantining'])
 
-            self.quarantine_delay.value = controller.params['quarantine_delay']
-
             if controller.params['quarantining']:
                 self.quarantine_toggle.label = "Quarantine enabled"
                 self.quarantine_toggle.button_type = "success"
+
+                controller.update_parameter(
+                    'quarantine_delay', controller.params['quarantine_delay'])
             else:
                 self.quarantine_toggle.label = "Quarantine disabled"
                 self.quarantine_toggle.button_type = "danger"

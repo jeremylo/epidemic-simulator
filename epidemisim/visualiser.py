@@ -84,7 +84,7 @@ class Controls:
 
         # Response controls
         self.distancing_factor = wrap(Slider(start=PARAMETERS['distancing_factor'][0], end=PARAMETERS['distancing_factor'][2],
-                                             value=controller.params['distancing_factor'] * 100, step=0.5, title="Distancing factor (%)"), controller, "distancing_factor")
+                                             value=controller.params['distancing_factor'] * 100, step=0.5, title="Physical distancing factor (%)"), controller, "distancing_factor")
         self.quarantine_delay = wrap(Slider(start=PARAMETERS['quarantine_delay'][0], end=PARAMETERS['quarantine_delay'][2],
                                             value=controller.params['quarantine_delay'], step=1, title="Quarantine delay (ticks)"), controller, "quarantine_delay")
 

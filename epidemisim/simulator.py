@@ -110,7 +110,7 @@ class Engine:
                  SICKNESS_DURATION: int = 250,
                  DISTANCING_FACTOR: float = 0.01,
                  QUARANTINE_DELAY: int = 249,
-                 DISTANCING_RADIUS_FACTOR: float = 1.5,
+                 DISTANCING_RADIUS_FACTOR: float = 5.0,
                  INITIAL_IMMUNITY: float = 0.0):
         self.SICKNESS_PROXIMITY = SICKNESS_PROXIMITY
         self.SICKNESS_DURATION = SICKNESS_DURATION
@@ -127,6 +127,8 @@ class Engine:
             AgentStatus.SUSCEPTIBLE.name: n - 1
         }
         self.ticks = 0
+
+        self.distancing_radius = self.DISTANCING_RADIUS_FACTOR * self.SICKNESS_PROXIMITY
 
     def create_agents(self, n, immunity):
         m = min(MAX_X, MAX_Y)
@@ -158,12 +160,12 @@ class Engine:
         norms = np.linalg.norm(differences, axis=2)
         for i in range(self.agent_count):
             for j in range(i + 1, self.agent_count):
-                if norms[i, j] < self.DISTANCING_RADIUS_FACTOR * self.SICKNESS_PROXIMITY:
+                if norms[i, j] < self.distancing_radius:
                     acceleration = self.DISTANCING_FACTOR * \
                         differences[i, j] / norms[i, j]**2
 
-                    self.agents[i].velocity -= acceleration
-                    self.agents[j].velocity += acceleration
+                    self.agents[i].velocity += acceleration
+                    self.agents[j].velocity -= acceleration
 
                     if self.agents[i].status == AgentStatus.SUSCEPTIBLE \
                             and self.agents[j].status == AgentStatus.INFECTIOUS \

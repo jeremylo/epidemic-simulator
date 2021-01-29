@@ -8,7 +8,7 @@ from bokeh.models import ColumnDataSource
 
 from .simulator import Engine, AgentStatus, TICKS_PER_SECOND, PARAMETERS
 from .util import cajole, trisect, get_color
-from .visualiser import get_about_us, get_controls, get_population_health_graph, get_visualisation
+from .visualiser import Controls, get_about_us, get_population_health_graph, get_visualisation
 
 
 class Controller:
@@ -16,10 +16,9 @@ class Controller:
     terminating = False
 
     def __init__(self, params={}) -> None:
-        self.params = {param: PARAMETERS[param][1] for param in PARAMETERS}
-        self.params['quarantining'] = self.params['quarantining'] == 1
-        self.params['distancing_factor'] /= 100
-        self.params['initial_immunity'] /= 100
+        self.params = {}
+        for param in PARAMETERS:
+            self.update_parameter(param, PARAMETERS[param][1])
 
         for param in params:
             self.update_parameter(param, params[param])
@@ -34,6 +33,8 @@ class Controller:
         self.names = [status.name for status in AgentStatus][::-1]
         self.status_source = ColumnDataSource(pd.DataFrame(
             np.zeros((1, len(self.names))), columns=self.names))
+
+        self.controls = Controls(self)
 
         self.start()
 
@@ -53,7 +54,7 @@ class Controller:
         elif key == 'quarantining':
             self.params['quarantining'] = self.params['quarantining'] == 1
 
-        if not self.params['quarantining']:
+        if 'quarantining' in self.params and not self.params['quarantining']:
             self.params['quarantine_delay'] = self.params['sickness_duration'] + 1
 
     def make_engine(self) -> Engine:
@@ -68,7 +69,7 @@ class Controller:
 
         curdoc().add_root(gridplot([
             [self.visualisation, self.population_health_graph],
-            [get_controls(self), get_about_us()]
+            [self.controls.get_controls(), get_about_us()]
         ], toolbar_location="left", toolbar_options={'logo': None}))
 
     def start(self) -> None:

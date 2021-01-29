@@ -50,59 +50,71 @@ def wrap(control: Slider, controller, key: str):
     return control
 
 
-def get_simulation_controls(controller):
-    return [
-        Div(text="""<strong>Simulation Controls</strong>"""),
-        wrap(Slider(start=PARAMETERS['agents'][0], end=PARAMETERS['agents'][2], value=controller.params['agents'],
-                    step=1, title="Number of agents"), controller, 'agents'),
-        wrap(Slider(start=PARAMETERS['initial_immunity'][0], end=PARAMETERS['initial_immunity'][2], value=controller.params['initial_immunity'] * 100,
-                    step=1, title="Initial immunity (%)"), controller, 'initial_immunity')
+class Controls:
+
+    simulation_controls = [
+        Div(text="""<strong>Simulation Controls</strong>""")
     ]
 
-
-def get_disease_controls(controller):
-    return [
-        Div(text="""<strong>Disease Profile Controls</strong>"""),
-        wrap(Slider(start=PARAMETERS['sickness_proximity'][0], end=PARAMETERS['sickness_proximity'][2], value=controller.params['sickness_proximity'],
-                    step=1, title="Sickness proximity"), controller, "sickness_proximity"),
-        wrap(Slider(start=PARAMETERS['sickness_duration'][0], end=PARAMETERS['sickness_duration'][2], value=controller.params['sickness_duration'],
-                    step=1, title="Sickness duration (ticks)"), controller, "sickness_duration")
+    disease_controls = [
+        Div(text="""<strong>Disease Profile Controls</strong>""")
     ]
 
-
-def get_response_controls(controller):
-
-    toggle = Toggle(label="Quarantine enabled" if controller.params['quarantining'] else "Quarantine disabled",
-                    button_type="success" if controller.params['quarantining'] else "danger", active=controller.params['quarantining'])
-
-    def toggle_callback(event):
-        controller.update_parameter(
-            'quarantining', not controller.params['quarantining'])
-
-        if controller.params['quarantining']:
-            toggle.label = "Quarantine enabled"
-            toggle.button_type = "success"
-        else:
-            toggle.label = "Quarantine disabled"
-            toggle.button_type = "danger"
-
-        controller.reset()
-
-    toggle.on_click(toggle_callback)
-
-    return [
-        Div(text="""<strong>Disease Response Controls</strong>"""),
-        wrap(Slider(start=PARAMETERS['quarantine_delay'][0], end=PARAMETERS['quarantine_delay'][2], value=controller.params['quarantine_delay'],
-                    step=1, title="Quarantine delay (ticks)"), controller, "quarantine_delay"),
-        wrap(Slider(start=PARAMETERS['distancing_factor'][0], end=PARAMETERS['distancing_factor'][2], value=controller.params['distancing_factor'] * 100,
-                    step=0.5, title="Distancing factor (%)"), controller, "distancing_factor"),
-        toggle
+    response_controls = [
+        Div(text="""<strong>Disease Response Controls</strong>""")
     ]
 
+    def __init__(self, controller):
+        # Simulation controls
+        self.agents = wrap(Slider(start=PARAMETERS['agents'][0], end=PARAMETERS['agents'][2],
+                                  value=controller.params['agents'], step=1, title="Number of agents"), controller, 'agents')
+        self.initial_immunity = wrap(Slider(start=PARAMETERS['initial_immunity'][0], end=PARAMETERS['initial_immunity'][2],
+                                            value=controller.params['initial_immunity'] * 100, step=1, title="Initial immunity (%)"), controller, 'initial_immunity')
 
-def get_controls(controller):
-    return column(*get_simulation_controls(controller), *
-                  get_disease_controls(controller), *get_response_controls(controller))
+        self.simulation_controls.append(self.agents)
+        self.simulation_controls.append(self.initial_immunity)
+
+        # Disease controls
+        self.sickness_proximity = wrap(Slider(start=PARAMETERS['sickness_proximity'][0], end=PARAMETERS['sickness_proximity'][2],
+                                              value=controller.params['sickness_proximity'], step=1, title="Sickness proximity"), controller, "sickness_proximity")
+        self.sickness_duration = wrap(Slider(start=PARAMETERS['sickness_duration'][0], end=PARAMETERS['sickness_duration'][2],
+                                             value=controller.params['sickness_duration'], step=1, title="Sickness duration (ticks)"), controller, "sickness_duration")
+        self.disease_controls.append(self.sickness_proximity)
+        self.disease_controls.append(self.sickness_duration)
+
+        # Response controls
+        self.distancing_factor = wrap(Slider(start=PARAMETERS['distancing_factor'][0], end=PARAMETERS['distancing_factor'][2],
+                                             value=controller.params['distancing_factor'] * 100, step=0.5, title="Distancing factor (%)"), controller, "distancing_factor")
+        self.quarantine_delay = wrap(Slider(start=PARAMETERS['quarantine_delay'][0], end=PARAMETERS['quarantine_delay'][2],
+                                            value=controller.params['quarantine_delay'], step=1, title="Quarantine delay (ticks)"), controller, "quarantine_delay")
+
+        self.quarantine_toggle = Toggle(label="Quarantine enabled" if controller.params['quarantining'] else "Quarantine disabled",
+                                        button_type="success" if controller.params['quarantining'] else "danger", active=controller.params['quarantining'])
+
+        self.response_controls.append(self.distancing_factor)
+        self.response_controls.append(self.quarantine_delay)
+        self.response_controls.append(self.quarantine_toggle)
+
+        def toggle_callback(event):
+            controller.update_parameter(
+                'quarantining', not controller.params['quarantining'])
+
+            self.quarantine_delay.value = controller.params['quarantine_delay']
+
+            if controller.params['quarantining']:
+                self.quarantine_toggle.label = "Quarantine enabled"
+                self.quarantine_toggle.button_type = "success"
+            else:
+                self.quarantine_toggle.label = "Quarantine disabled"
+                self.quarantine_toggle.button_type = "danger"
+
+            controller.reset()
+
+        self.quarantine_toggle.on_click(toggle_callback)
+
+    def get_controls(self):
+        return column(*self.simulation_controls, *self.disease_controls, *self.response_controls)
+
 
 ###############
 # ABOUT US    #

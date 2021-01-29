@@ -18,7 +18,7 @@ PARAMETERS = {  # MINIMUM, DEFAULT, MAXIMUM
 
     'quarantine_delay': (0, 249, 501),
     'distancing_factor': (0, 1, 200),
-    'quarantining': (0, 0, 1)
+    'quarantining': (0, 1, 1)
 }
 
 

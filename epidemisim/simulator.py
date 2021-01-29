@@ -17,7 +17,7 @@ PARAMETERS = {  # MINIMUM, DEFAULT, MAXIMUM
     'sickness_duration': (1, 250, 500),
 
     'quarantine_delay': (0, 249, 501),
-    'distancing_factor': (0, 1, 200),
+    'distancing_factor': (0, 0, 200),
     'quarantining': (0, 1, 1)
 }
 

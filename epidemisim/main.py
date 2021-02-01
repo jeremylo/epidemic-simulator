@@ -132,6 +132,9 @@ class Controller:
         curdoc().add_next_tick_callback(self.start)
 
 
+curdoc().clear()
+curdoc().title = "Epidemisim"
+
 # Run
 controller = Controller()
 controller.show()
